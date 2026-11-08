@@ -1,26 +1,14 @@
 // Documentación: https://www.prisma.io/docs
-//
-// La URL de conexión NO vive acá: en Prisma 7 el CLI la lee desde
-// prisma.config.ts y el runtime la recibe vía driver adapter (PrismaPg),
-// configurado en src/prisma/prisma.service.ts.
 
 generator client {
   provider = "prisma-client"
+  output   = "../src/generated/prisma"
 
-  // `prisma-client-js` está deprecado. El generador nuevo exige un `output`
-  // explícito y genera dentro del proyecto en vez de node_modules.
-  // Tiene que caer dentro de src/ porque tsconfig.build.json compila
-  // únicamente ese directorio (rootDir: ./src, include: ["src"]).
-  output = "../src/generated/prisma"
-
-  // Query compiler en WASM: sin binario nativo de Rust, lo que permite usar
-  // imágenes Alpine sin instalar libssl.
+  // Query compiler en WASM.
   engineType = "client"
   runtime    = "nodejs"
 
-  // El proyecto es ESM puro ("type": "module" + moduleResolution nodenext),
-  // así que el cliente se genera como ESM y sus imports relativos llevan la
-  // extensión .js que tsc espera al emitir.
+  // Configuración ESM.
   moduleFormat           = "esm"
   generatedFileExtension = "ts"
   importFileExtension    = "js"
@@ -30,24 +18,60 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Role {
+  JUGADOR
+  CAPITAN
+  ARBITRO
+  ORGANIZADOR
+  ADMINISTRADOR
+}
+
+enum TeamState {
+  PENDIENTE_VALIDACION
+  APROBADO
+  RECHAZADO
+  SUSPENDIDO
+}
+
+enum Position {
+  PORTERO
+  DEFENSA
+  MEDIOCAMPISTA
+  DELANTERO
+}
+
+// ==========================================
+// USERS
+// ==========================================
+
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   email        String   @unique
   passwordHash String   @map("password_hash")
+  role         Role     @default(JUGADOR)
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  // Autenticación.
   refreshTokens RefreshToken[]
+
+  // Equipos donde el usuario es capitán.
+  captainedTeams Team[] @relation("TeamCaptain")
 
   @@map("users")
 }
 
-model RefreshToken {
-  id String @id @default(uuid()) @db.Uuid
+// ==========================================
+// REFRESH TOKENS
+// ==========================================
 
-  // Se guarda el SHA-256 del token, nunca el token en claro: si se filtra la
-  // base, los refresh tokens emitidos no son utilizables.
+model RefreshToken {
+  id        String @id @default(uuid()) @db.Uuid
   tokenHash String @unique @map("token_hash")
 
   userId String @map("user_id") @db.Uuid
@@ -59,4 +83,104 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+// ==========================================
+// SEASONS
+// ==========================================
+
+model Season {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(80)
+
+  // Duración de la temporada.
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+
+  // Período habilitado para inscripciones.
+  registrationStart DateTime @map("registration_start")
+  registrationEnd   DateTime @map("registration_end")
+
+  // Cuota de inscripción.
+  fee Decimal @db.Decimal(10, 2)
+
+  // Identifica la temporada habilitada.
+  isActive Boolean @default(true) @map("is_active")
+
+  teams Team[]
+
+  @@index([isActive])
+  @@map("seasons")
+}
+
+// ==========================================
+// TEAMS
+// ==========================================
+
+model Team {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Relaciones principales.
+  seasonId  String @map("season_id") @db.Uuid
+  captainId String @map("captain_id") @db.Uuid
+
+  // Información del equipo.
+  name      String @db.VarChar(80)
+  shortName String @map("short_name") @db.VarChar(12)
+
+  // Estado de inscripción.
+  status TeamState @default(PENDIENTE_VALIDACION)
+
+  // Motivo de rechazo o suspensión.
+  rejectionReason String? @map("rejection_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relaciones.
+  season  Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  captain User   @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Restrict)
+
+  // Plantilla de jugadores.
+  players Player[]
+
+  // Restricciones de negocio.
+  @@unique([seasonId, name])
+  @@unique([seasonId, shortName])
+  @@unique([seasonId, captainId])
+  @@index([seasonId])
+  @@index([captainId])
+  @@index([status])
+  @@map("teams")
+}
+
+// ==========================================
+// PLAYERS
+// ==========================================
+
+model Player {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Equipo al que pertenece el jugador.
+  teamId String @map("team_id") @db.Uuid
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Información personal.
+  name      String   @db.VarChar(100)
+  dui       String   @unique @db.VarChar(10)
+  birthDate DateTime @map("birth_date") @db.Date
+
+  // Información deportiva.
+  position     Position
+  jerseyNumber Int      @map("jersey_number")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Un jugador no puede tener dos camisetas iguales
+  // dentro del mismo equipo.
+  @@unique([teamId, jerseyNumber])
+  @@index([teamId])
+  @@map("players")
 }
