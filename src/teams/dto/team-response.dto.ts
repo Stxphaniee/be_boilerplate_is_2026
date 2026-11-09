@@ -1,30 +1,54 @@
 
 import { ApiProperty } from '@nestjs/swagger';
-import { TeamState, type Team } from '@PrismaClient';
+import { Position, TeamState, type Team, type Player } from '@PrismaClient';
+
+export class PlayerResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty()
+  dui!: string;
+
+  @ApiProperty()
+  birthDate!: Date;
+
+  @ApiProperty({ enum: Position })
+  position!: Position;
+
+  @ApiProperty()
+  jerseyNumber!: number;
+
+  static fromEntity(player: Player): PlayerResponseDto {
+    const dto = new PlayerResponseDto();
+
+    dto.id = player.id;
+    dto.name = player.name;
+    dto.dui = player.dui;
+    dto.birthDate = player.birthDate;
+    dto.position = player.position;
+    dto.jerseyNumber = player.jerseyNumber;
+
+    return dto;
+  }
+}
 
 export class TeamResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ example: 'Tigres del Norte' })
+  @ApiProperty()
   name!: string;
 
-  @ApiProperty({ example: 'TDN' })
+  @ApiProperty()
   shortName!: string;
 
-  @ApiProperty({
-    enum: TeamState,
-    example: TeamState.PENDIENTE_VALIDACION,
-    description: 'Estado actual de la inscripción del equipo.',
-  })
+  @ApiProperty({ enum: TeamState })
   status!: TeamState;
 
-  @ApiProperty({
-    nullable: true,
-    type: String,
-    description:
-      'Motivo del rechazo; solo viene informado si status es RECHAZADO.',
-  })
+  @ApiProperty({ nullable: true })
   rejectionReason!: string | null;
 
   @ApiProperty({ format: 'uuid' })
@@ -36,7 +60,12 @@ export class TeamResponseDto {
   @ApiProperty()
   createdAt!: Date;
 
-  static fromEntity(team: Team): TeamResponseDto {
+  @ApiProperty({ type: [PlayerResponseDto] })
+  players!: PlayerResponseDto[];
+
+  static fromEntity(
+    team: Team & { players: Player[] },
+  ): TeamResponseDto {
     const dto = new TeamResponseDto();
 
     dto.id = team.id;
@@ -47,6 +76,7 @@ export class TeamResponseDto {
     dto.seasonId = team.seasonId;
     dto.captainId = team.captainId;
     dto.createdAt = team.createdAt;
+    dto.players = team.players.map(PlayerResponseDto.fromEntity);
 
     return dto;
   }

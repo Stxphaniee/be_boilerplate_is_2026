@@ -1,47 +1,63 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsOptional, IsString, IsUUID, Length } from 'class-validator';
 
-/** Quita espacios en los extremos y colapsa los espacios repetidos. */
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+  ValidateNested,
+} from 'class-validator';
+import { CreatePlayerDto } from './create-player.dto.js';
+
 const cleanSpaces = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value;
 
-/** La sigla se guarda en mayúsculas para que "fcb" y "FCB" no convivan. */
 const cleanAcronym = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toUpperCase() : value;
 
 export class CreateTeamDto {
   @ApiProperty({
-    description: 'Nombre del equipo. Debe ser único dentro de la temporada.',
-    example: 'Tigres del Norte',
+    example: 'Los Halcones FC',
     minLength: 3,
     maxLength: 80,
   })
   @Transform(cleanSpaces)
-  @IsString({ message: 'El nombre del equipo debe ser texto.' })
-  @Length(3, 80, {
-    message: 'El nombre del equipo debe tener entre 3 y 80 caracteres.',
-  })
+  @IsString()
+  @Length(3, 80)
   name!: string;
 
   @ApiProperty({
-    description:
-      'Sigla del equipo. Se guarda en mayúsculas y es única dentro de la temporada.',
-    example: 'TDN',
+    example: 'LHF',
     minLength: 2,
     maxLength: 12,
   })
   @Transform(cleanAcronym)
-  @IsString({ message: 'La sigla debe ser texto.' })
-  @Length(2, 12, { message: 'La sigla debe tener entre 2 y 12 caracteres.' })
+  @IsString()
+  @Length(2, 12)
   shortName!: string;
 
-  @ApiPropertyOptional({
-    description:
-      'Temporada en la que se inscribe. Si se omite, se usa la temporada vigente.',
-    format: 'uuid',
-  })
+  @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
-  @IsUUID('all', { message: 'seasonId debe ser un UUID válido.' })
+  @IsUUID('all')
   seasonId?: string;
+
+  @ApiProperty({
+    type: [CreatePlayerDto],
+    minItems: 5,
+    maxItems: 15,
+  })
+  @IsArray()
+  @ArrayMinSize(5, {
+    message: 'El equipo debe tener al menos 5 jugadores.',
+  })
+  @ArrayMaxSize(15, {
+    message: 'El equipo no puede superar los 15 jugadores.',
+  })
+  @ValidateNested({ each: true })
+  @Type(() => CreatePlayerDto)
+  players!: CreatePlayerDto[];
 }
