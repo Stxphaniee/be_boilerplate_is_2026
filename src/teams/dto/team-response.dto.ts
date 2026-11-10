@@ -1,6 +1,6 @@
-
 import { ApiProperty } from '@nestjs/swagger';
 import { Position, TeamState, type Team, type Player } from '@PrismaClient';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PlayerResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -63,8 +63,14 @@ export class TeamResponseDto {
   @ApiProperty({ type: [PlayerResponseDto] })
   players!: PlayerResponseDto[];
 
+  @ApiPropertyOptional()
+  captainEmail?: string;
+
   static fromEntity(
-    team: Team & { players: Player[] },
+    team: Team & {
+      players: Player[];
+      captain?: { email: string };
+    },
   ): TeamResponseDto {
     const dto = new TeamResponseDto();
 
@@ -78,6 +84,9 @@ export class TeamResponseDto {
     dto.createdAt = team.createdAt;
     dto.players = team.players.map(PlayerResponseDto.fromEntity);
 
+    if (team.captain) {
+      dto.captainEmail = team.captain.email;
+    }
     return dto;
   }
 }
