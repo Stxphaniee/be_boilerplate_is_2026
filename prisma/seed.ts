@@ -26,12 +26,21 @@ const SEED_USERS = [
  * Temporada 2026. Los períodos son los definidos en el documento de historias:
  * inscripciones del 1 al 15 de noviembre de 2026 (fechas inclusivas).
  */
+
 const SEASON = {
   name: 'Liga Mayor Amateur - Temporada 2026',
+
   startDate: new Date(2026, 10, 16),
   endDate: new Date(2027, 2, 31, 23, 59, 59, 999),
+
   registrationStart: new Date(2026, 10, 1),
   registrationEnd: new Date(2026, 10, 15, 23, 59, 59, 999),
+
+  // Período de correcciones y cambios de plantilla.
+
+  rosterStart: new Date(2026, 10, 16),
+  rosterEnd: new Date(2026, 11, 15, 23, 59, 59, 999),
+
   fee: '50.00',
 };
 
