@@ -1,14 +1,11 @@
-// Documentación: https://www.prisma.io/docs
 
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
 
-  // Query compiler en WASM.
   engineType = "client"
   runtime    = "nodejs"
 
-  // Configuración ESM.
   moduleFormat           = "esm"
   generatedFileExtension = "ts"
   importFileExtension    = "js"
@@ -44,6 +41,17 @@ enum Position {
   DELANTERO
 }
 
+enum PaymentState {
+  PENDIENTE
+  PAGADO
+  VENCIDO
+}
+
+enum NotificationState {
+  NO_LEIDA
+  LEIDA
+}
+
 // ==========================================
 // USERS
 // ==========================================
@@ -62,6 +70,9 @@ model User {
 
   // Equipos donde el usuario es capitán.
   captainedTeams Team[] @relation("TeamCaptain")
+
+  // Notificaciones del usuario.
+  notifications Notification[]
 
   @@map("users")
 }
@@ -101,12 +112,18 @@ model Season {
   registrationStart DateTime @map("registration_start")
   registrationEnd   DateTime @map("registration_end")
 
+  // Período de altas, bajas y correcciones.
+  // Temporales como opcionales para la migración.
+  rosterStart DateTime? @map("roster_start")
+  rosterEnd   DateTime? @map("roster_end")
+
   // Cuota de inscripción.
   fee Decimal @db.Decimal(10, 2)
 
   // Identifica la temporada habilitada.
   isActive Boolean @default(true) @map("is_active")
 
+  // Equipos inscritos.
   teams Team[]
 
   @@index([isActive])
@@ -138,16 +155,20 @@ model Team {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relaciones.
-  season  Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
-  captain User   @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Restrict)
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  captain User @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Restrict)
 
   // Plantilla de jugadores.
   players Player[]
+
+  // Pagos asociados al equipo.
+  payments Payment[]
 
   // Restricciones de negocio.
   @@unique([seasonId, name])
   @@unique([seasonId, shortName])
   @@unique([seasonId, captainId])
+
   @@index([seasonId])
   @@index([captainId])
   @@index([status])
@@ -178,9 +199,68 @@ model Player {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // Un jugador no puede tener dos camisetas iguales
-  // dentro del mismo equipo.
+  // Número de camiseta único dentro del equipo.
   @@unique([teamId, jerseyNumber])
   @@index([teamId])
   @@map("players")
+}
+
+// ==========================================
+// PAYMENTS
+// ==========================================
+
+model Payment {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Equipo al que corresponde el pago.
+  teamId String @unique @map("team_id") @db.Uuid
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Información económica.
+  amount Decimal @db.Decimal(10, 2)
+
+  // Estado del pago.
+  status PaymentState @default(PENDIENTE)
+
+  // Fecha límite para realizar el pago.
+  dueDate DateTime @map("due_date")
+
+  // Fecha en que se confirmó el pago.
+  paidAt DateTime? @map("paid_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([dueDate])
+  @@map("payments")
+}
+
+// ==========================================
+// NOTIFICATIONS
+// ==========================================
+
+model Notification {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Usuario destinatario.
+  userId String @map("user_id") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Contenido de la notificación.
+  title   String @db.VarChar(150)
+  message String @db.VarChar(500)
+
+  // Estado de lectura.
+  status NotificationState @default(NO_LEIDA)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  readAt    DateTime? @map("read_at")
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("notifications")
 }
