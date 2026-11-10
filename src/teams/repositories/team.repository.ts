@@ -433,4 +433,28 @@ export class TeamRepository {
       field.toLowerCase().includes('dui'),
     );
   }
+
+
+async getValidationStats() {
+  const grouped = await this.prisma.team.groupBy({
+    by: ['status'],
+    _count: {
+      _all: true,
+    },
+  });
+
+  const countByStatus = (status: TeamState) =>
+    grouped.find((item) => item.status === status)?._count._all ?? 0;
+
+  return {
+    pending: countByStatus(TeamState.PENDIENTE_VALIDACION),
+    approved: countByStatus(TeamState.APROBADO),
+    rejected: countByStatus(TeamState.RECHAZADO),
+    total: grouped.reduce(
+      (total, item) => total + item._count._all,
+      0,
+    ),
+  };
+}
+
 }
