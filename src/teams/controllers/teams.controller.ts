@@ -1,3 +1,4 @@
+
 import {
   Body,
   Controller,
@@ -98,7 +99,9 @@ export class TeamsController {
   @ApiNotFoundResponse({
     description: 'El capitán aún no inscribió un equipo.',
   })
-  async findMine(@CurrentUser() user: User): Promise<TeamResponseDto> {
+  async findMine(
+    @CurrentUser() user: User,
+  ): Promise<TeamResponseDto> {
     const team = await this.teamsService.findMine(user);
 
     return TeamResponseDto.fromEntity(team);
@@ -130,6 +133,24 @@ export class TeamsController {
     const teams = await this.teamsService.findPending();
 
     return teams.map((team) => TeamResponseDto.fromEntity(team));
+  }
+
+  @Get('stats')
+  @Roles(Role.ORGANIZADOR)
+  @ApiOperation({
+    summary: 'Consulta las estadísticas de inscripciones (H2)',
+  })
+  @ApiOkResponse({
+    description: 'Estadísticas de inscripciones.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Acceso exclusivo para organizadores.',
+  })
+  async getValidationStats() {
+    return this.teamsService.getValidationStats();
   }
 
   /**
