@@ -196,10 +196,15 @@ model Player {
   position     Position
   jerseyNumber Int      @map("jersey_number")
 
+  // Baja lógica: null = activo, fecha = dado de baja.
+  leftAt DateTime? @map("left_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // Número de camiseta único dentro del equipo.
+  // Número de camiseta único entre jugadores activos del equipo.
+  // La restricción @@unique cubre todos los registros (incluidos dados de baja),
+  // así que la unicidad real entre activos se valida en el servicio.
   @@unique([teamId, jerseyNumber])
   @@index([teamId])
   @@map("players")
