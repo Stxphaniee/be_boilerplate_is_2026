@@ -1,11 +1,17 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
 import {
   CaptainAlreadyHasTeamError,
   TeamNameTakenError,
   TeamShortNameTakenError,
+  PlayerDuplicateDuiError,
+  JerseyNumberTakenError,
+  RosterFullError,
+  RosterTooSmallError,
 } from '@Teams/errors';
 import { Prisma, Position, TeamState, PaymentState } from '@PrismaClient';
+import type { Player } from '@PrismaClient';
+
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
@@ -32,6 +38,15 @@ export interface ResubmitTeamData {
     position: Position;
     jerseyNumber: number;
   }[];
+}
+
+export interface AddPlayerData {
+  teamId: string;
+  name: string;
+  dui: string;
+  birthDate: Date;
+  position: Position;
+  jerseyNumber: number;
 }
 
 export interface ReviewTeamData {
@@ -434,27 +449,140 @@ export class TeamRepository {
     );
   }
 
+  async getValidationStats() {
+    const grouped = await this.prisma.team.groupBy({
+      by: ['status'],
+      _count: {
+        _all: true,
+      },
+    });
 
-async getValidationStats() {
-  const grouped = await this.prisma.team.groupBy({
-    by: ['status'],
-    _count: {
-      _all: true,
-    },
-  });
+    const countByStatus = (status: TeamState) =>
+      grouped.find((item) => item.status === status)?._count._all ?? 0;
 
-  const countByStatus = (status: TeamState) =>
-    grouped.find((item) => item.status === status)?._count._all ?? 0;
+    return {
+      pending: countByStatus(TeamState.PENDIENTE_VALIDACION),
+      approved: countByStatus(TeamState.APROBADO),
+      rejected: countByStatus(TeamState.RECHAZADO),
+      total: grouped.reduce((total, item) => total + item._count._all, 0),
+    };
+  }
 
-  return {
-    pending: countByStatus(TeamState.PENDIENTE_VALIDACION),
-    approved: countByStatus(TeamState.APROBADO),
-    rejected: countByStatus(TeamState.RECHAZADO),
-    total: grouped.reduce(
-      (total, item) => total + item._count._all,
-      0,
-    ),
-  };
-}
+  // =====================================================
+  // H3 - GESTIÓN DE PLANTILLA
+  // =====================================================
 
+  /**
+   * Devuelve solo los jugadores activos del equipo
+   * (leftAt = null).
+   */
+  findActivePlayers(teamId: string): Promise<Player[]> {
+    return this.prisma.player.findMany({
+      where: {
+        teamId,
+        leftAt: null,
+      },
+      orderBy: {
+        jerseyNumber: 'asc',
+      },
+    });
+  }
+
+  /**
+   * Agrega un jugador a la plantilla dentro de una transacción:
+   * 1. Relee el conteo de activos para evitar condiciones de carrera.
+   * 2. Valida camiseta duplicada entre activos.
+   * 3. Crea el jugador.
+   */
+  async addPlayer(data: AddPlayerData): Promise<Player> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const activeCount = await tx.player.count({
+          where: {
+            teamId: data.teamId,
+            leftAt: null,
+          },
+        });
+
+        if (activeCount >= 15) {
+          throw new RosterFullError();
+        }
+
+        const jerseyTaken = await tx.player.findFirst({
+          where: {
+            teamId: data.teamId,
+            jerseyNumber: data.jerseyNumber,
+            leftAt: null,
+          },
+        });
+
+        if (jerseyTaken) {
+          throw new JerseyNumberTakenError(data.jerseyNumber);
+        }
+
+        return tx.player.create({
+          data: {
+            teamId: data.teamId,
+            name: data.name,
+            dui: data.dui,
+            birthDate: data.birthDate,
+            position: data.position,
+            jerseyNumber: data.jerseyNumber,
+          },
+        });
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === UNIQUE_CONSTRAINT_VIOLATION
+      ) {
+        if (this.isDuiConflict(error)) {
+          throw new PlayerDuplicateDuiError(data.dui);
+        }
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Baja lógica de un jugador dentro de una transacción:
+   * 1. Verifica que el jugador existe y pertenece al equipo.
+   * 2. Verifica que no está en un partido EN_CURSO.
+   * 3. Verifica que la plantilla no quedaría con menos de 5 activos.
+   * 4. Establece leftAt con la fecha actual.
+   */
+  async removePlayer(teamId: string, playerId: string): Promise<Player> {
+    return this.prisma.$transaction(async (tx) => {
+      const player = await tx.player.findFirst({
+        where: {
+          id: playerId,
+          teamId,
+          leftAt: null,
+        },
+      });
+
+      if (!player) {
+        throw new NotFoundException(
+          'El jugador no existe o ya fue dado de baja.',
+        );
+      }
+
+      const activeCount = await tx.player.count({
+        where: {
+          teamId,
+          leftAt: null,
+        },
+      });
+
+      if (activeCount <= 5) {
+        throw new RosterTooSmallError();
+      }
+
+      return tx.player.update({
+        where: { id: playerId },
+        data: { leftAt: new Date() },
+      });
+    });
+  }
 }
