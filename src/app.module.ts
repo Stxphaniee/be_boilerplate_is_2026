@@ -8,6 +8,7 @@ import { PrismaModule } from '@Prisma';
 import { TeamsModule } from '@Teams';
 import { UsersModule } from '@Users';
 import { validateEnv } from '@Config';
+import { MatchesModule } from '@Matches';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { validateEnv } from '@Config';
     UsersModule,
     AuthModule,
     TeamsModule,
+    MatchesModule,
   ],
   providers: [
     {

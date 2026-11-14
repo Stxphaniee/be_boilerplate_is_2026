@@ -73,6 +73,7 @@ model User {
 
   // Notificaciones del usuario.
   notifications Notification[]
+  refereedMatches Match[] @relation("RefereeMatches")
 
   @@map("users")
 }
@@ -125,6 +126,7 @@ model Season {
 
   // Equipos inscritos.
   teams Team[]
+  rounds Round[]
 
   @@index([isActive])
   @@map("seasons")
@@ -163,6 +165,8 @@ model Team {
 
   // Pagos asociados al equipo.
   payments Payment[]
+  homeMatches Match[] @relation("HomeMatches")
+  awayMatches Match[] @relation("AwayMatches")
 
   // Restricciones de negocio.
   @@unique([seasonId, name])
@@ -268,4 +272,106 @@ model Notification {
   @@index([status])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// ==========================================
+// ENUMS - PARTIDOS
+// ==========================================
+
+enum Court {
+  A
+  B
+  C
+}
+
+enum RoundState {
+  BORRADOR
+  PUBLICADA
+}
+
+enum MatchState {
+  PROGRAMADO
+  EN_CURSO
+  FINALIZADO
+  SUSPENDIDO
+  CANCELADO
+}
+
+// ==========================================
+// ROUNDS (JORNADAS)
+// ==========================================
+
+model Round {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Temporada a la que pertenece.
+  seasonId String @map("season_id") @db.Uuid
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+
+  // Número de jornada dentro de la temporada.
+  numero Int
+
+  // Estado de la jornada.
+  state RoundState @default(BORRADOR)
+
+  // Fecha de publicación.
+  publishedAt DateTime? @map("published_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Partidos de la jornada.
+  matches Match[]
+
+  // Un número de jornada es único por temporada.
+  @@unique([seasonId, numero])
+  @@index([seasonId])
+  @@index([state])
+  @@map("rounds")
+}
+
+// ==========================================
+// MATCHES (PARTIDOS)
+// ==========================================
+
+model Match {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Jornada a la que pertenece.
+  roundId String @map("round_id") @db.Uuid
+  round   Round  @relation(fields: [roundId], references: [id], onDelete: Restrict)
+
+  // Equipos contendientes.
+  homeTeamId String @map("home_team_id") @db.Uuid
+  awayTeamId String @map("away_team_id") @db.Uuid
+  homeTeam   Team   @relation("HomeMatches", fields: [homeTeamId], references: [id], onDelete: Restrict)
+  awayTeam   Team   @relation("AwayMatches", fields: [awayTeamId], references: [id], onDelete: Restrict)
+
+  // Árbitro asignado.
+  refereeId String @map("referee_id") @db.Uuid
+  referee   User   @relation("RefereeMatches", fields: [refereeId], references: [id], onDelete: Restrict)
+
+  // Cancha asignada.
+  court Court
+
+  // Horario del partido.
+  startsAt DateTime  @map("starts_at")
+  endsAt   DateTime  @map("ends_at")
+
+  // Estado del partido.
+  state MatchState @default(PROGRAMADO)
+
+  // Motivo de suspensión.
+  suspensionReason String? @map("suspension_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([roundId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([refereeId])
+  @@index([startsAt])
+  @@index([state])
+  @@map("matches")
 }

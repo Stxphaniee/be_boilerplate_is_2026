@@ -1,4 +1,3 @@
-
 import { Module } from '@nestjs/common';
 
 import { TeamsController } from '@Teams/controllers';
@@ -27,6 +26,7 @@ import { NotificationsModule } from '../notifications/notifications.module.js';
   exports: [
     TeamsService,
     TeamRepository,
+    SeasonRepository,
   ],
 })
 export class TeamsModule {}

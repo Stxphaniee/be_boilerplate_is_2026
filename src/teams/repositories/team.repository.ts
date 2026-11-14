@@ -12,7 +12,6 @@ import {
 import { Prisma, Position, TeamState, PaymentState } from '@PrismaClient';
 import type { Player } from '@PrismaClient';
 
-
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
 export interface CreateTeamData {
@@ -72,6 +71,7 @@ export type TeamWithReviewData = Prisma.TeamGetPayload<{
         email: true;
       };
     };
+    payments: true;
   };
 }>;
 
@@ -193,6 +193,7 @@ export class TeamRepository {
             email: true,
           },
         },
+        payments: true,
       },
       orderBy: {
         createdAt: 'asc',
@@ -211,6 +212,7 @@ export class TeamRepository {
             email: true,
           },
         },
+        payments: true,
       },
     });
   }
@@ -219,8 +221,6 @@ export class TeamRepository {
   // HU2 - ACTUALIZACIÓN DE ESTADO
   // =====================================================
 
-  // Método original conservado por compatibilidad.
-  // Para aprobar o rechazar desde HU2, usar review().
   updateStatus(
     id: string,
     status: TeamState,
@@ -240,20 +240,11 @@ export class TeamRepository {
             email: true,
           },
         },
+        payments: true,
       },
     });
   }
 
-  /**
-   * Aprueba o rechaza una inscripción.
-   *
-   * Realiza en una sola transacción:
-   * 1. Cambio condicional de estado.
-   * 2. Creación del pago si fue aprobada.
-   * 3. Registro de la notificación.
-   *
-   * Si falla alguna operación, se revierte todo.
-   */
   async review(data: ReviewTeamData): Promise<TeamWithReviewData> {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.team.updateMany({
@@ -274,9 +265,7 @@ export class TeamRepository {
       }
 
       const team = await tx.team.findUniqueOrThrow({
-        where: {
-          id: data.teamId,
-        },
+        where: { id: data.teamId },
         include: {
           players: true,
           captain: {
@@ -285,6 +274,7 @@ export class TeamRepository {
               email: true,
             },
           },
+          payments: true,
         },
       });
 
@@ -328,9 +318,7 @@ export class TeamRepository {
       .count({
         where: {
           seasonId,
-          id: {
-            not: teamId,
-          },
+          id: { not: teamId },
           name: {
             equals: name,
             mode: 'insensitive',
@@ -350,18 +338,13 @@ export class TeamRepository {
   ): Promise<TeamWithPlayers> {
     try {
       return await this.prisma.$transaction(async (tx) => {
-        // Solo permite actualizar equipos rechazados.
-        // La condición también protege contra cambios
-        // simultáneos de estado.
         const updated = await tx.team.updateMany({
           where: {
             id: teamId,
             status: TeamState.RECHAZADO,
           },
           data: {
-            ...(data.name !== undefined && {
-              name: data.name,
-            }),
+            ...(data.name !== undefined && { name: data.name }),
             status: TeamState.PENDIENTE_VALIDACION,
             rejectionReason: null,
           },
@@ -373,13 +356,7 @@ export class TeamRepository {
           );
         }
 
-        // Reemplazo completo de la plantilla de la
-        // inscripción rechazada, dentro de la transacción.
-        await tx.player.deleteMany({
-          where: {
-            teamId,
-          },
-        });
+        await tx.player.deleteMany({ where: { teamId } });
 
         await tx.player.createMany({
           data: data.players.map((player) => ({
@@ -393,12 +370,8 @@ export class TeamRepository {
         });
 
         return tx.team.findUniqueOrThrow({
-          where: {
-            id: teamId,
-          },
-          include: {
-            players: true,
-          },
+          where: { id: teamId },
+          include: { players: true },
         });
       });
     } catch (error) {
@@ -431,15 +404,8 @@ export class TeamRepository {
     error: Prisma.PrismaClientKnownRequestError,
   ): string[] {
     const target = error.meta?.target;
-
-    if (Array.isArray(target)) {
-      return target.map(String);
-    }
-
-    if (typeof target === 'string') {
-      return [target];
-    }
-
+    if (Array.isArray(target)) return target.map(String);
+    if (typeof target === 'string') return [target];
     return [];
   }
 
@@ -452,9 +418,7 @@ export class TeamRepository {
   async getValidationStats() {
     const grouped = await this.prisma.team.groupBy({
       by: ['status'],
-      _count: {
-        _all: true,
-      },
+      _count: { _all: true },
     });
 
     const countByStatus = (status: TeamState) =>
@@ -472,36 +436,18 @@ export class TeamRepository {
   // H3 - GESTIÓN DE PLANTILLA
   // =====================================================
 
-  /**
-   * Devuelve solo los jugadores activos del equipo
-   * (leftAt = null).
-   */
   findActivePlayers(teamId: string): Promise<Player[]> {
     return this.prisma.player.findMany({
-      where: {
-        teamId,
-        leftAt: null,
-      },
-      orderBy: {
-        jerseyNumber: 'asc',
-      },
+      where: { teamId, leftAt: null },
+      orderBy: { jerseyNumber: 'asc' },
     });
   }
 
-  /**
-   * Agrega un jugador a la plantilla dentro de una transacción:
-   * 1. Relee el conteo de activos para evitar condiciones de carrera.
-   * 2. Valida camiseta duplicada entre activos.
-   * 3. Crea el jugador.
-   */
   async addPlayer(data: AddPlayerData): Promise<Player> {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const activeCount = await tx.player.count({
-          where: {
-            teamId: data.teamId,
-            leftAt: null,
-          },
+          where: { teamId: data.teamId, leftAt: null },
         });
 
         if (activeCount >= 15) {
@@ -545,21 +491,10 @@ export class TeamRepository {
     }
   }
 
-  /**
-   * Baja lógica de un jugador dentro de una transacción:
-   * 1. Verifica que el jugador existe y pertenece al equipo.
-   * 2. Verifica que no está en un partido EN_CURSO.
-   * 3. Verifica que la plantilla no quedaría con menos de 5 activos.
-   * 4. Establece leftAt con la fecha actual.
-   */
   async removePlayer(teamId: string, playerId: string): Promise<Player> {
     return this.prisma.$transaction(async (tx) => {
       const player = await tx.player.findFirst({
-        where: {
-          id: playerId,
-          teamId,
-          leftAt: null,
-        },
+        where: { id: playerId, teamId, leftAt: null },
       });
 
       if (!player) {
@@ -569,10 +504,7 @@ export class TeamRepository {
       }
 
       const activeCount = await tx.player.count({
-        where: {
-          teamId,
-          leftAt: null,
-        },
+        where: { teamId, leftAt: null },
       });
 
       if (activeCount <= 5) {
