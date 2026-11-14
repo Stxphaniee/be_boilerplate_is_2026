@@ -28,3 +28,51 @@ export class CaptainAlreadyHasTeamError extends Error {
     this.name = 'CaptainAlreadyHasTeamError';
   }
 }
+
+// =====================================================
+// H3 - GESTIÓN DE PLANTILLA
+// =====================================================
+
+/**
+ * Se lanza cuando se intenta agregar un jugador y la plantilla
+ * ya alcanzó el máximo de 15 jugadores activos.
+ */
+export class RosterFullError extends Error {
+  constructor() {
+    super('La plantilla ya alcanzó el máximo de 15 jugadores.');
+    this.name = 'RosterFullError';
+  }
+}
+
+/**
+ * Se lanza cuando una baja dejaría la plantilla con menos
+ * de 5 jugadores activos.
+ */
+export class RosterTooSmallError extends Error {
+  constructor() {
+    super('No puedes dar de baja a un jugador si la plantilla quedaría con menos de 5.');
+    this.name = 'RosterTooSmallError';
+  }
+}
+
+/**
+ * Se lanza cuando el DUI del jugador a agregar ya existe
+ * en la base (restricción única global de Player.dui).
+ */
+export class PlayerDuplicateDuiError extends Error {
+  constructor(public readonly dui: string) {
+    super(`Ya existe un jugador registrado con el DUI "${dui}".`);
+    this.name = 'PlayerDuplicateDuiError';
+  }
+}
+
+/**
+ * Se lanza cuando el número de camiseta ya está en uso
+ * por otro jugador activo del mismo equipo.
+ */
+export class JerseyNumberTakenError extends Error {
+  constructor(public readonly jerseyNumber: number) {
+    super(`El número de camiseta ${jerseyNumber} ya está en uso en la plantilla.`);
+    this.name = 'JerseyNumberTakenError';
+  }
+}

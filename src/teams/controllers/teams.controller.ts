@@ -1,7 +1,7 @@
-
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -27,7 +27,9 @@ import { CurrentUser, Roles } from '@Auth/decorators';
 import { TeamsService } from '@Teams/services';
 
 import {
+  AddPlayerDto,
   CreateTeamDto,
+  PlayerResponseDto,
   TeamResponseDto,
   UpdateTeamStatusDto,
   ResubmitTeamDto,
@@ -42,7 +44,7 @@ export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
   // =====================================================
-  // HU1 - INSCRIPCIÓN DE EQUIPOS
+  // H1 - INSCRIPCIÓN DE EQUIPOS
   // =====================================================
 
   /**
@@ -87,7 +89,7 @@ export class TeamsController {
   @Get('mine')
   @Roles(Role.CAPITAN)
   @ApiOperation({
-    summary: 'Consulta el equipo del capitán autenticado',
+    summary: 'Consulta el equipo del capitán autenticado (H1)',
   })
   @ApiOkResponse({ type: TeamResponseDto })
   @ApiUnauthorizedResponse({
@@ -108,7 +110,7 @@ export class TeamsController {
   }
 
   // =====================================================
-  // HU2 - VALIDACIÓN DE INSCRIPCIONES
+  // H2 - VALIDACIÓN DE INSCRIPCIONES
   // =====================================================
 
   /**
@@ -135,6 +137,10 @@ export class TeamsController {
     return teams.map((team) => TeamResponseDto.fromEntity(team));
   }
 
+  /**
+   * H2: Estadísticas de inscripciones.
+   * Exclusivo para ORGANIZADOR.
+   */
   @Get('stats')
   @Roles(Role.ORGANIZADOR)
   @ApiOperation({
@@ -254,5 +260,115 @@ export class TeamsController {
     const team = await this.teamsService.resubmit(user, id, dto);
 
     return TeamResponseDto.fromEntity(team);
+  }
+
+  // =====================================================
+  // H3 - GESTIÓN DE PLANTILLA
+  // =====================================================
+
+  /**
+   * H3: Consulta los jugadores activos de la plantilla.
+   * Exclusivo para el CAPITAN propietario.
+   */
+  @Get(':id/players')
+  @Roles(Role.CAPITAN)
+  @ApiOperation({
+    summary: 'Consulta la plantilla activa del equipo (H3)',
+  })
+  @ApiOkResponse({
+    type: [PlayerResponseDto],
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'El equipo no pertenece al capitán autenticado.',
+  })
+  @ApiNotFoundResponse({
+    description: 'El equipo solicitado no existe.',
+  })
+  @ApiConflictResponse({
+    description: 'El equipo no está aprobado.',
+  })
+  async getPlayers(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<PlayerResponseDto[]> {
+    const players = await this.teamsService.getPlayers(user, id);
+
+    return players.map(PlayerResponseDto.fromEntity);
+  }
+
+  /**
+   * H3: Agrega un jugador a la plantilla.
+   * Exclusivo para el CAPITAN propietario.
+   */
+  @Post(':id/players')
+  @Roles(Role.CAPITAN)
+  @ApiOperation({
+    summary: 'Agrega un jugador a la plantilla (H3)',
+  })
+  @ApiCreatedResponse({ type: PlayerResponseDto })
+  @ApiBadRequestResponse({
+    description:
+      'Datos del jugador inválidos, menor de edad o plantilla llena.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'El equipo no pertenece al capitán autenticado.',
+  })
+  @ApiNotFoundResponse({
+    description: 'El equipo solicitado no existe.',
+  })
+  @ApiConflictResponse({
+    description:
+      'Período cerrado, DUI duplicado o número de camiseta en uso.',
+  })
+  async addPlayer(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddPlayerDto,
+  ): Promise<PlayerResponseDto> {
+    const player = await this.teamsService.addPlayer(user, id, dto);
+
+    return PlayerResponseDto.fromEntity(player);
+  }
+
+  /**
+   * H3: Da de baja lógica a un jugador de la plantilla.
+   * Exclusivo para el CAPITAN propietario.
+   */
+  @Patch(':id/players/:playerId/leave')
+  @Roles(Role.CAPITAN)
+  @ApiOperation({
+    summary: 'Da de baja a un jugador de la plantilla (H3)',
+  })
+  @ApiOkResponse({ type: PlayerResponseDto })
+  @ApiBadRequestResponse({
+    description: 'La plantilla quedaría con menos de 5 jugadores.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'El equipo no pertenece al capitán autenticado.',
+  })
+  @ApiNotFoundResponse({
+    description: 'El equipo o jugador no existe, o el jugador ya fue dado de baja.',
+  })
+  @ApiConflictResponse({
+    description:
+      'Período cerrado, equipo no aprobado o jugador en partido EN_CURSO.',
+  })
+  async removePlayer(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('playerId', ParseUUIDPipe) playerId: string,
+  ): Promise<PlayerResponseDto> {
+    const player = await this.teamsService.removePlayer(user, id, playerId);
+
+    return PlayerResponseDto.fromEntity(player);
   }
 }

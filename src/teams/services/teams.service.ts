@@ -12,15 +12,20 @@ import {
   CaptainAlreadyHasTeamError,
   TeamNameTakenError,
   TeamShortNameTakenError,
+  RosterFullError,
+  RosterTooSmallError,
+  PlayerDuplicateDuiError,
+  JerseyNumberTakenError,
 } from '@Teams/errors';
 
 import type {
   CreateTeamDto,
   ResubmitTeamDto,
   UpdateTeamStatusDto,
+  AddPlayerDto,
 } from '@Teams/dto';
 
-import { TeamState, type Season, type User } from '@PrismaClient';
+import { TeamState, type Season, type User, type Player } from '@PrismaClient';
 
 import type { TeamWithPlayers, TeamWithReviewData } from '@Teams/repositories';
 
@@ -374,7 +379,7 @@ export class TeamsService {
   // MANEJO DE ERRORES
   // =====================================================
 
-  private toHttpException(error: unknown): unknown {
+    private toHttpException(error: unknown): unknown {
     if (error instanceof Error && error.message === 'DUPLICATE_PLAYER_DUI') {
       return new ConflictException(
         'Uno de los jugadores ya está registrado con ese DUI.',
@@ -399,10 +404,176 @@ export class TeamsService {
       );
     }
 
+    if (error instanceof PlayerDuplicateDuiError) {
+      return new ConflictException(
+        'Ya existe un jugador registrado con ese DUI.',
+      );
+    }
+
+    if (error instanceof JerseyNumberTakenError) {
+      return new ConflictException(
+        'El número de camiseta ya está en uso en la plantilla.',
+      );
+    }
+
+    if (error instanceof RosterFullError) {
+      return new BadRequestException(
+        'La plantilla ya alcanzó el máximo de 15 jugadores.',
+      );
+    }
+
+    if (error instanceof RosterTooSmallError) {
+      return new BadRequestException(
+        'No puedes dar de baja a un jugador si la plantilla quedaría con menos de 5.',
+      );
+    }
+
     return error;
   }
 
   async getValidationStats() {
     return this.teamRepository.getValidationStats();
+  }
+
+  // =====================================================
+  // H3 - GESTIÓN DE PLANTILLA
+  // =====================================================
+
+  async getPlayers(captain: User, teamId: string): Promise<Player[]> {
+    const team = await this.teamRepository.findByIdForReview(teamId);
+
+    if (!team) {
+      throw new NotFoundException('El equipo solicitado no existe.');
+    }
+
+    if (team.captainId !== captain.id) {
+      throw new ForbiddenException(
+        'No puedes consultar la plantilla de un equipo ajeno.',
+      );
+    }
+
+    if (team.status !== TeamState.APROBADO) {
+      throw new ConflictException(
+        'Solo puedes gestionar la plantilla de un equipo aprobado.',
+      );
+    }
+
+    return this.teamRepository.findActivePlayers(teamId);
+  }
+
+  async addPlayer(
+    captain: User,
+    teamId: string,
+    dto: AddPlayerDto,
+    now: Date = new Date(),
+  ): Promise<Player> {
+    const team = await this.teamRepository.findByIdForReview(teamId);
+
+    if (!team) {
+      throw new NotFoundException('El equipo solicitado no existe.');
+    }
+
+    if (team.captainId !== captain.id) {
+      throw new ForbiddenException(
+        'No puedes modificar la plantilla de un equipo ajeno.',
+      );
+    }
+
+    if (team.status !== TeamState.APROBADO) {
+      throw new ConflictException(
+        'Solo puedes gestionar la plantilla de un equipo aprobado.',
+      );
+    }
+
+    const season = await this.resolveSeason(team.seasonId, now);
+
+    this.assertRosterWindowOpen(season, now);
+
+    const birthDate = new Date(`${dto.birthDate}T00:00:00.000Z`);
+
+    this.assertPlayerAge(dto.name, birthDate, now);
+
+    try {
+      return await this.teamRepository.addPlayer({
+        teamId,
+        name: dto.name,
+        dui: dto.dui,
+        birthDate,
+        position: dto.position,
+        jerseyNumber: dto.jerseyNumber,
+      });
+    } catch (error) {
+      throw this.toHttpException(error);
+    }
+  }
+
+  async removePlayer(
+    captain: User,
+    teamId: string,
+    playerId: string,
+    now: Date = new Date(),
+  ): Promise<Player> {
+    const team = await this.teamRepository.findByIdForReview(teamId);
+
+    if (!team) {
+      throw new NotFoundException('El equipo solicitado no existe.');
+    }
+
+    if (team.captainId !== captain.id) {
+      throw new ForbiddenException(
+        'No puedes modificar la plantilla de un equipo ajeno.',
+      );
+    }
+
+    if (team.status !== TeamState.APROBADO) {
+      throw new ConflictException(
+        'Solo puedes gestionar la plantilla de un equipo aprobado.',
+      );
+    }
+
+    const season = await this.resolveSeason(team.seasonId, now);
+
+    this.assertRosterWindowOpen(season, now);
+
+    try {
+      return await this.teamRepository.removePlayer(teamId, playerId);
+    } catch (error) {
+      throw this.toHttpException(error);
+    }
+  }
+
+  // =====================================================
+  // H3 - VALIDACIONES PRIVADAS
+  // =====================================================
+
+  private assertRosterWindowOpen(season: Season, now: Date): void {
+    if (!season.rosterStart || !season.rosterEnd) {
+      throw new ConflictException(
+        'La temporada no tiene configurada la ventana de altas y bajas.',
+      );
+    }
+
+    if (now < season.rosterStart || now > season.rosterEnd) {
+      throw new ConflictException(
+        'El período de altas y bajas de jugadores está cerrado.',
+      );
+    }
+  }
+
+  private assertPlayerAge(name: string, birthDate: Date, now: Date): void {
+    let age = now.getUTCFullYear() - birthDate.getUTCFullYear();
+
+    const birthdayNotReached =
+      now.getUTCMonth() < birthDate.getUTCMonth() ||
+      (now.getUTCMonth() === birthDate.getUTCMonth() &&
+        now.getUTCDate() < birthDate.getUTCDate());
+
+    if (birthdayNotReached) age--;
+
+    if (age < 18) {
+      throw new BadRequestException(
+        `El jugador ${name} debe tener al menos 18 años.`,
+      );
+    }
   }
 }
