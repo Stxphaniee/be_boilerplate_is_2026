@@ -1,3 +1,4 @@
+
 import {
   Body,
   Controller,
@@ -22,7 +23,6 @@ import {
 } from '@nestjs/swagger';
 
 import { Roles } from '@Auth/decorators';
-
 import { MatchesService } from '@Matches/services';
 
 import {
@@ -30,6 +30,7 @@ import {
   CreateRoundDto,
   MatchResponseDto,
   RoundResponseDto,
+  UpdateMatchDto,
 } from '@Matches/dto';
 
 import { Role } from '@PrismaClient';
@@ -42,9 +43,9 @@ export class MatchesController {
     private readonly matchesService: MatchesService,
   ) {}
 
-  // ==========================================
+  // =====================================================
   // CONSULTAS AUXILIARES HU4
-  // ==========================================
+  // =====================================================
 
   @Get('equipos-disponibles')
   @Roles(Role.ORGANIZADOR)
@@ -109,7 +110,7 @@ export class MatchesController {
     description: 'Acceso exclusivo para organizadores.',
   })
   @ApiNotFoundResponse({
-    description: 'No hay temporada activa.',
+    description: 'No hay una temporada activa.',
   })
   async findAllRounds(): Promise<RoundResponseDto[]> {
     const rounds =
@@ -212,6 +213,46 @@ export class MatchesController {
   ): Promise<MatchResponseDto> {
     const match =
       await this.matchesService.createMatch(dto);
+
+    return MatchResponseDto.fromEntity(match);
+  }
+
+  // =====================================================
+  // H5 - EDICIÓN, SUSPENSIÓN Y CANCELACIÓN
+  // =====================================================
+
+  @Patch('partidos/:id')
+  @Roles(Role.ORGANIZADOR)
+  @ApiOperation({
+    summary:
+      'Modifica, suspende o cancela un partido programado (H5)',
+  })
+  @ApiOkResponse({
+    type: MatchResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Datos inválidos o motivo de suspensión faltante.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Acceso exclusivo para organizadores.',
+  })
+  @ApiNotFoundResponse({
+    description: 'El partido no existe.',
+  })
+  @ApiConflictResponse({
+    description:
+      'Estado incompatible, traslape de cancha o equipos.',
+  })
+  async updateMatch(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateMatchDto,
+  ): Promise<MatchResponseDto> {
+    const match =
+      await this.matchesService.updateMatch(id, dto);
 
     return MatchResponseDto.fromEntity(match);
   }
