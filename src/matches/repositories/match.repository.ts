@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
-
 import { PrismaService } from '@Prisma/services';
-
 import { Court, MatchState } from '@PrismaClient';
 import type { Match } from '@PrismaClient';
 
@@ -15,6 +13,14 @@ export interface CreateMatchData {
   endsAt: Date;
 }
 
+export interface UpdateMatchData {
+  startsAt?: Date;
+  endsAt?: Date;
+  court?: Court;
+  state?: MatchState;
+  suspensionReason?: string | null;
+}
+
 @Injectable()
 export class MatchRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -24,9 +30,7 @@ export class MatchRepository {
   }
 
   findById(id: string): Promise<Match | null> {
-    return this.prisma.match.findUnique({
-      where: { id },
-    });
+    return this.prisma.match.findUnique({ where: { id } });
   }
 
   findByRound(roundId: string): Promise<Match[]> {
@@ -36,7 +40,25 @@ export class MatchRepository {
     });
   }
 
-  // Verifica si la cancha está ocupada.
+  update(id: string, data: UpdateMatchData): Promise<Match> {
+    return this.prisma.match.update({
+      where: { id },
+      data: {
+        ...(data.startsAt !== undefined && { startsAt: data.startsAt }),
+        ...(data.endsAt !== undefined && { endsAt: data.endsAt }),
+        ...(data.court !== undefined && { court: data.court }),
+        ...(data.state !== undefined && { state: data.state }),
+        ...(data.suspensionReason !== undefined && {
+          suspensionReason: data.suspensionReason,
+        }),
+      },
+    });
+  }
+
+  // =====================================================
+  // VALIDACIONES DE TRASLAPE
+  // =====================================================
+
   hasCourtOverlap(
     court: Court,
     startsAt: Date,
@@ -53,10 +75,9 @@ export class MatchRepository {
           endsAt: { gt: startsAt },
         },
       })
-      .then((count) => count > 0);
+      .then((c) => c > 0);
   }
 
-  // Verifica si alguno de los equipos tiene otro partido.
   hasTeamOverlap(
     homeTeamId: string,
     awayTeamId: string,
@@ -77,10 +98,9 @@ export class MatchRepository {
           ],
         },
       })
-      .then((count) => count > 0);
+      .then((c) => c > 0);
   }
 
-  // Evita enfrentamientos duplicados en la misma jornada.
   hasDuplicateFixture(
     roundId: string,
     homeTeamId: string,
@@ -93,17 +113,13 @@ export class MatchRepository {
           state: { not: MatchState.CANCELADO },
           OR: [
             { homeTeamId, awayTeamId },
-            {
-              homeTeamId: awayTeamId,
-              awayTeamId: homeTeamId,
-            },
+            { homeTeamId: awayTeamId, awayTeamId: homeTeamId },
           ],
         },
       })
-      .then((count) => count > 0);
+      .then((c) => c > 0);
   }
 
-  // Comprueba si la jornada tiene equipos suspendidos.
   hasSuspendedTeam(roundId: string): Promise<boolean> {
     return this.prisma.match
       .count({
@@ -116,6 +132,6 @@ export class MatchRepository {
           ],
         },
       })
-      .then((count) => count > 0);
+      .then((c) => c > 0);
   }
 }
