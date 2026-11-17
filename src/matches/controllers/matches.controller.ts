@@ -1,4 +1,3 @@
-
 import {
   Body,
   Controller,
@@ -22,18 +21,19 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-import { Roles } from '@Auth/decorators';
+import { CurrentUser, Roles } from '@Auth/decorators';
 import { MatchesService } from '@Matches/services';
 
 import {
   CreateMatchDto,
   CreateRoundDto,
+  MatchCalendarResponseDto,
   MatchResponseDto,
   RoundResponseDto,
   UpdateMatchDto,
 } from '@Matches/dto';
 
-import { Role } from '@PrismaClient';
+import { Role, type User } from '@PrismaClient';
 
 @ApiTags('matches')
 @ApiBearerAuth()
@@ -42,6 +42,37 @@ export class MatchesController {
   constructor(
     private readonly matchesService: MatchesService,
   ) {}
+
+  // =====================================================
+  // HU6 - CALENDARIO DEL EQUIPO AUTENTICADO
+  // =====================================================
+
+  @Get('equipos/mis-partidos')
+  @Roles(Role.JUGADOR, Role.CAPITAN)
+  @ApiOperation({
+    summary: 'Consulta el calendario del equipo del usuario autenticado (HU6)',
+  })
+  @ApiOkResponse({
+    type: [MatchCalendarResponseDto],
+    description: 'Partidos de jornadas publicadas, ordenados por fecha.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description:
+      'El usuario no tiene participación activa o su cuenta no está vinculada a una ficha de jugador.',
+  })
+  async findMyMatches(
+    @CurrentUser() user: User,
+  ): Promise<MatchCalendarResponseDto[]> {
+    const { teamId, matches } =
+      await this.matchesService.findMyMatches(user);
+
+    return matches.map((match) =>
+      MatchCalendarResponseDto.fromEntity(match, teamId),
+    );
+  }
 
   // =====================================================
   // CONSULTAS AUXILIARES HU4

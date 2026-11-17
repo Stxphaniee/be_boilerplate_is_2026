@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
-import { Court, MatchState } from '@PrismaClient';
+import { Court, MatchState, Prisma, RoundState } from '@PrismaClient';
 import type { Match } from '@PrismaClient';
 
 export interface CreateMatchData {
@@ -21,6 +21,20 @@ export interface UpdateMatchData {
   suspensionReason?: string | null;
 }
 
+export type MatchCalendarData = Prisma.MatchGetPayload<{
+  include: {
+    homeTeam: {
+      select: { id: true; name: true };
+    };
+    awayTeam: {
+      select: { id: true; name: true };
+    };
+    round: {
+      select: { numero: true };
+    };
+  };
+}>;
+
 @Injectable()
 export class MatchRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -37,6 +51,32 @@ export class MatchRepository {
     return this.prisma.match.findMany({
       where: { roundId },
       orderBy: { startsAt: 'asc' },
+    });
+  }
+
+  /**
+   * Consulta el calendario oficial de un equipo.
+   * Solo incluye jornadas PUBLICADAS, pero conserva todos los estados del partido
+   * para que el usuario también vea suspensiones y cancelaciones.
+   */
+  findCalendarByTeam(teamId: string): Promise<MatchCalendarData[]> {
+    return this.prisma.match.findMany({
+      where: {
+        OR: [{ homeTeamId: teamId }, { awayTeamId: teamId }],
+        round: { state: RoundState.PUBLICADA },
+      },
+      include: {
+        homeTeam: {
+          select: { id: true, name: true },
+        },
+        awayTeam: {
+          select: { id: true, name: true },
+        },
+        round: {
+          select: { numero: true },
+        },
+      },
+      orderBy: [{ startsAt: 'asc' }, { createdAt: 'asc' }],
     });
   }
 

@@ -1,11 +1,13 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
 import { RoundRepository, MatchRepository } from '@Matches/repositories';
+import type { MatchCalendarData } from '@Matches/repositories';
 import { SeasonRepository, TeamRepository } from '@Teams/repositories';
 import { PrismaService } from '@Prisma/services';
 
@@ -311,6 +313,81 @@ export class MatchesService {
       state: MatchState.PROGRAMADO,
       suspensionReason: null,
     });
+  }
+
+  // =====================================================
+  // HU6 - CALENDARIO DEL EQUIPO AUTENTICADO
+  // =====================================================
+
+  async findMyMatches(
+    user: User,
+    now: Date = new Date(),
+  ): Promise<{ teamId: string; matches: MatchCalendarData[] }> {
+    const season = await this.seasonRepository.findCurrent(now);
+
+    if (!season) {
+      throw new NotFoundException('No hay una temporada vigente.');
+    }
+
+    let teamId: string | null = null;
+
+    // El capitán consulta primero el equipo que tiene a su cargo en la temporada.
+    if (user.role === Role.CAPITAN) {
+      const team = await this.teamRepository.findByCaptain(season.id, user.id);
+      teamId = team?.id ?? null;
+    }
+
+    // Un jugador, o un capitán que también participa como jugador, debe tener
+    // su ficha vinculada a la cuenta y continuar activo en la plantilla.
+    if (!teamId) {
+      // La relación players.user_id se incorpora mediante una migración
+      // incremental. La consulta parametrizada evita depender de que el
+      // cliente Prisma anterior ya conozca este campo.
+      const playerMemberships = await this.prisma.$queryRaw<
+        { teamId: string; leftAt: Date | null; seasonId: string }[]
+      >`
+        SELECT
+          p.team_id AS "teamId",
+          p.left_at AS "leftAt",
+          t.season_id AS "seasonId"
+        FROM players p
+        INNER JOIN teams t ON t.id = p.team_id
+        WHERE p.user_id = ${user.id}::uuid
+        LIMIT 1
+      `;
+
+      const player = playerMemberships[0] ?? null;
+
+      if (!player) {
+        if (user.role === Role.JUGADOR) {
+          throw new ForbiddenException(
+            'Tu cuenta aún no está vinculada a un jugador.',
+          );
+        }
+
+        throw new ForbiddenException(
+          'No tienes participación activa en ningún equipo.',
+        );
+      }
+
+      if (player.leftAt !== null || player.seasonId !== season.id) {
+        throw new ForbiddenException(
+          'No tienes participación activa en ningún equipo.',
+        );
+      }
+
+      teamId = player.teamId;
+    }
+
+    if (!teamId) {
+      throw new ForbiddenException(
+        'No tienes participación activa en ningún equipo.',
+      );
+    }
+
+    const matches = await this.matchRepository.findCalendarByTeam(teamId);
+
+    return { teamId, matches };
   }
 
   // =====================================================
