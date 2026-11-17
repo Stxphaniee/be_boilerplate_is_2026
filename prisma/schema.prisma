@@ -71,6 +71,9 @@ model User {
   // Equipos donde el usuario es capitán.
   captainedTeams Team[] @relation("TeamCaptain")
 
+  // Ficha deportiva vinculada a la cuenta (opcional).
+  player Player?
+
   // Notificaciones del usuario.
   notifications Notification[]
   refereedMatches Match[] @relation("RefereeMatches")
@@ -190,6 +193,11 @@ model Player {
   teamId String @map("team_id") @db.Uuid
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Cuenta de usuario vinculada por el organizador.
+  // La relación es opcional y única.
+  userId String? @unique @map("user_id") @db.Uuid
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Información personal.
   name      String   @db.VarChar(100)
