@@ -5,37 +5,28 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import {
-  RoundRepository,
-  MatchRepository,
-} from '@Matches/repositories';
-
-import {
-  SeasonRepository,
-  TeamRepository,
-} from '@Teams/repositories';
-
+import { RoundRepository, MatchRepository } from '@Matches/repositories';
+import { SeasonRepository, TeamRepository } from '@Teams/repositories';
 import { PrismaService } from '@Prisma/services';
 
 import type {
   CreateMatchDto,
   CreateRoundDto,
+  UpdateMatchDto,
 } from '@Matches/dto';
+
+import { UpdateMatchAction } from '@Matches/dto';
 
 import {
   Court,
+  MatchState,
   Role,
   RoundState,
   TeamState,
   PaymentState,
 } from '@PrismaClient';
 
-import type {
-  Match,
-  Round,
-  User,
-  Team,
-} from '@PrismaClient';
+import type { Match, Round, User, Team } from '@PrismaClient';
 
 const MATCH_DURATION_MINUTES = 90;
 
@@ -49,9 +40,9 @@ export class MatchesService {
     private readonly prisma: PrismaService,
   ) {}
 
-  // ==========================================
-  // JORNADAS
-  // ==========================================
+  // =====================================================
+  // H4 - JORNADAS
+  // =====================================================
 
   async findAllRounds(): Promise<Round[]> {
     const season = await this.seasonRepository.findCurrent(new Date());
@@ -70,12 +61,7 @@ export class MatchesService {
       throw new NotFoundException('No hay una temporada activa.');
     }
 
-    if (
-      await this.roundRepository.existsByNumero(
-        season.id,
-        dto.numero,
-      )
-    ) {
+    if (await this.roundRepository.existsByNumero(season.id, dto.numero)) {
       throw new ConflictException(
         `La jornada ${dto.numero} ya existe en la temporada.`,
       );
@@ -88,9 +74,7 @@ export class MatchesService {
     const round = await this.roundRepository.findById(roundId);
 
     if (!round) {
-      throw new NotFoundException(
-        'La jornada solicitada no existe.',
-      );
+      throw new NotFoundException('La jornada solicitada no existe.');
     }
 
     if (round.state !== RoundState.BORRADOR) {
@@ -108,21 +92,18 @@ export class MatchesService {
     return this.roundRepository.publish(roundId);
   }
 
-  // ==========================================
-  // PARTIDOS
-  // ==========================================
+  // =====================================================
+  // H4 - PARTIDOS
+  // =====================================================
 
   async createMatch(
     dto: CreateMatchDto,
     now: Date = new Date(),
   ): Promise<Match> {
-    // 1. Validar jornada.
     const round = await this.roundRepository.findById(dto.jornadaId);
 
     if (!round) {
-      throw new NotFoundException(
-        'La jornada solicitada no existe.',
-      );
+      throw new NotFoundException('La jornada solicitada no existe.');
     }
 
     if (round.state !== RoundState.BORRADOR) {
@@ -131,49 +112,34 @@ export class MatchesService {
       );
     }
 
-    // 2. Validar equipos distintos.
     if (dto.equipoLocalId === dto.equipoVisitanteId) {
       throw new BadRequestException(
         'El equipo local y visitante no pueden ser el mismo.',
       );
     }
 
-    // 3. Validar fecha futura.
     const startsAt = new Date(dto.fechaHoraInicio);
 
     if (isNaN(startsAt.getTime())) {
-      throw new BadRequestException(
-        'La fecha de inicio no es válida.',
-      );
+      throw new BadRequestException('La fecha de inicio no es válida.');
     }
 
     if (startsAt <= now) {
-      throw new BadRequestException(
-        'La fecha del partido debe ser futura.',
-      );
+      throw new BadRequestException('La fecha del partido debe ser futura.');
     }
 
     const endsAt = new Date(
       startsAt.getTime() + MATCH_DURATION_MINUTES * 60_000,
     );
 
-    // 4. Validar árbitro.
     const referee = await this.findAndValidateReferee(dto.arbitroId);
 
-    // 5. Validar equipos.
     await this.validateTeam(dto.equipoLocalId);
     await this.validateTeam(dto.equipoVisitanteId);
 
-    // 6. Validar traslapes.
     const court = dto.cancha as Court;
 
-    if (
-      await this.matchRepository.hasCourtOverlap(
-        court,
-        startsAt,
-        endsAt,
-      )
-    ) {
+    if (await this.matchRepository.hasCourtOverlap(court, startsAt, endsAt)) {
       throw new ConflictException(
         `La cancha ${dto.cancha} ya está ocupada en ese intervalo.`,
       );
@@ -192,7 +158,6 @@ export class MatchesService {
       );
     }
 
-    // 7. Validar enfrentamiento duplicado.
     if (
       await this.matchRepository.hasDuplicateFixture(
         dto.jornadaId,
@@ -205,7 +170,6 @@ export class MatchesService {
       );
     }
 
-    // 8. Crear partido.
     return this.matchRepository.create({
       roundId: dto.jornadaId,
       homeTeamId: dto.equipoLocalId,
@@ -217,25 +181,153 @@ export class MatchesService {
     });
   }
 
-  // ==========================================
-  // CONSULTAS AUXILIARES PARA HU4
-  // ==========================================
+  // =====================================================
+  // H5 - EDICIÓN, SUSPENSIÓN Y CANCELACIÓN
+  // =====================================================
+
+  async updateMatch(
+    matchId: string,
+    dto: UpdateMatchDto,
+    now: Date = new Date(),
+  ): Promise<Match> {
+    const match = await this.matchRepository.findById(matchId);
+
+    if (!match) {
+      throw new NotFoundException('El partido solicitado no existe.');
+    }
+
+    // Estados que no admiten ninguna modificación.
+    const blocked: MatchState[] = [
+      MatchState.EN_CURSO,
+      MatchState.FINALIZADO,
+      MatchState.CANCELADO,
+    ];
+
+    if (blocked.includes(match.state)) {
+      throw new ConflictException(
+        `No se puede modificar un partido en estado ${match.state}.`,
+      );
+    }
+
+    // Un partido SUSPENDIDO solo admite reprogramación o cancelación.
+    if (match.state === MatchState.SUSPENDIDO) {
+      const isReprogramacion =
+        dto.fechaHoraInicio !== undefined &&
+        dto.estado === UpdateMatchAction.PROGRAMADO;
+
+      const isCancelacion = dto.estado === UpdateMatchAction.CANCELADO;
+
+      if (!isReprogramacion && !isCancelacion) {
+        throw new ConflictException(
+          'Un partido SUSPENDIDO solo puede reprogramarse (enviando nueva fecha y estado PROGRAMADO) o cancelarse.',
+        );
+      }
+    }
+
+    // Suspensión: requiere motivo.
+    if (dto.estado === UpdateMatchAction.SUSPENDIDO) {
+      if (match.state !== MatchState.PROGRAMADO) {
+        throw new ConflictException(
+          'Solo se puede suspender un partido PROGRAMADO.',
+        );
+      }
+
+      if (!dto.motivoSuspension?.trim()) {
+        throw new BadRequestException(
+          'El motivo de suspensión es obligatorio.',
+        );
+      }
+
+      return this.matchRepository.update(matchId, {
+        state: MatchState.SUSPENDIDO,
+        suspensionReason: dto.motivoSuspension.trim(),
+      });
+    }
+
+    // Cancelación.
+    if (dto.estado === UpdateMatchAction.CANCELADO) {
+      return this.matchRepository.update(matchId, {
+        state: MatchState.CANCELADO,
+        suspensionReason: null,
+      });
+    }
+
+    // Edición de fecha/cancha (PROGRAMADO → PROGRAMADO)
+    // o reprogramación (SUSPENDIDO → PROGRAMADO).
+    const newStartsAt = dto.fechaHoraInicio
+      ? new Date(dto.fechaHoraInicio)
+      : match.startsAt;
+
+    if (dto.fechaHoraInicio && isNaN(newStartsAt.getTime())) {
+      throw new BadRequestException('La fecha de inicio no es válida.');
+    }
+
+    if (dto.fechaHoraInicio && newStartsAt <= now) {
+      throw new BadRequestException(
+        'La nueva fecha del partido debe ser futura.',
+      );
+    }
+
+    const newEndsAt = new Date(
+      newStartsAt.getTime() + MATCH_DURATION_MINUTES * 60_000,
+    );
+
+    const newCourt = dto.cancha ? (dto.cancha as Court) : match.court;
+
+    // Revalidar traslapes excluyendo el partido actual.
+    if (dto.fechaHoraInicio || dto.cancha) {
+      if (
+        await this.matchRepository.hasCourtOverlap(
+          newCourt,
+          newStartsAt,
+          newEndsAt,
+          matchId,
+        )
+      ) {
+        throw new ConflictException(
+          `La cancha ${newCourt} ya está ocupada en ese intervalo.`,
+        );
+      }
+
+      if (
+        await this.matchRepository.hasTeamOverlap(
+          match.homeTeamId,
+          match.awayTeamId,
+          newStartsAt,
+          newEndsAt,
+          matchId,
+        )
+      ) {
+        throw new ConflictException(
+          'Uno de los equipos ya tiene un partido en ese intervalo.',
+        );
+      }
+    }
+
+    return this.matchRepository.update(matchId, {
+      startsAt: newStartsAt,
+      endsAt: newEndsAt,
+      court: newCourt,
+      state: MatchState.PROGRAMADO,
+      suspensionReason: null,
+    });
+  }
+
+  // =====================================================
+  // CONSULTAS AUXILIARES HU4
+  // =====================================================
 
   async findMatchesByRound(roundId: string): Promise<Match[]> {
     const round = await this.roundRepository.findById(roundId);
 
     if (!round) {
-      throw new NotFoundException(
-        'La jornada solicitada no existe.',
-      );
+      throw new NotFoundException('La jornada solicitada no existe.');
     }
 
     return this.matchRepository.findByRound(roundId);
   }
 
-  async findAvailableTeams(): Promise<
-    Pick<Team, 'id' | 'name'>[]
-  > {
+  async findAvailableTeams(): Promise<Pick<Team, 'id' | 'name'>[]> {
     const season = await this.seasonRepository.findCurrent(new Date());
 
     if (!season) {
@@ -262,9 +354,7 @@ export class MatchesService {
     });
   }
 
-  async findReferees(): Promise<
-    Pick<User, 'id' | 'email'>[]
-  > {
+  async findReferees(): Promise<Pick<User, 'id' | 'email'>[]> {
     return this.prisma.user.findMany({
       where: {
         role: Role.ARBITRO,
@@ -280,31 +370,22 @@ export class MatchesService {
     });
   }
 
-  // ==========================================
+  // =====================================================
   // VALIDACIONES PRIVADAS
-  // ==========================================
+  // =====================================================
 
-  private async findAndValidateReferee(
-    refereeId: string,
-  ): Promise<User> {
+  private async findAndValidateReferee(refereeId: string): Promise<User> {
     const user = await this.prisma.user.findUnique({
-      where: {
-        id: refereeId,
-      },
+      where: { id: refereeId },
     });
 
     if (!user) {
-      throw new NotFoundException(
-        'El árbitro seleccionado no existe.',
-      );
+      throw new NotFoundException('El árbitro seleccionado no existe.');
     }
 
-    if (
-      user.role !== Role.ARBITRO ||
-      !user.isActive
-    ) {
+    if (user.role !== Role.ARBITRO) {
       throw new ConflictException(
-        'El usuario seleccionado no es un árbitro activo.',
+        'El usuario seleccionado no tiene el rol de árbitro.',
       );
     }
 
@@ -315,9 +396,7 @@ export class MatchesService {
     const team = await this.teamRepository.findByIdForReview(teamId);
 
     if (!team) {
-      throw new NotFoundException(
-        `El equipo ${teamId} no existe.`,
-      );
+      throw new NotFoundException(`El equipo ${teamId} no existe.`);
     }
 
     if (team.status === TeamState.SUSPENDIDO) {
@@ -327,9 +406,7 @@ export class MatchesService {
     }
 
     if (team.status !== TeamState.APROBADO) {
-      throw new ConflictException(
-        `El equipo "${team.name}" no está aprobado.`,
-      );
+      throw new ConflictException(`El equipo "${team.name}" no está aprobado.`);
     }
 
     const payment = team.payments?.[0];
