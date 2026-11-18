@@ -4,3 +4,4 @@ export * from './update-match.dto.js';
 export * from './match-response.dto.js';
 export * from './match-calendar-response.dto.js';
 export * from './match-live.dto.js';
+export * from './match-results.dto.js';
