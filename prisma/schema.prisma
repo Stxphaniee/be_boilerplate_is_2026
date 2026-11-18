@@ -65,16 +65,12 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  // Autenticación.
   refreshTokens RefreshToken[]
 
-  // Equipos donde el usuario es capitán.
   captainedTeams Team[] @relation("TeamCaptain")
 
-  // Ficha deportiva vinculada a la cuenta (opcional).
   player Player?
 
-  // Notificaciones del usuario.
   notifications Notification[]
   refereedMatches Match[] @relation("RefereeMatches")
 
@@ -108,26 +104,19 @@ model Season {
   id   String @id @default(uuid()) @db.Uuid
   name String @db.VarChar(80)
 
-  // Duración de la temporada.
   startDate DateTime @map("start_date")
   endDate   DateTime @map("end_date")
 
-  // Período habilitado para inscripciones.
   registrationStart DateTime @map("registration_start")
   registrationEnd   DateTime @map("registration_end")
 
-  // Período de altas, bajas y correcciones.
-  // Temporales como opcionales para la migración.
   rosterStart DateTime? @map("roster_start")
   rosterEnd   DateTime? @map("roster_end")
 
-  // Cuota de inscripción.
   fee Decimal @db.Decimal(10, 2)
 
-  // Identifica la temporada habilitada.
   isActive Boolean @default(true) @map("is_active")
 
-  // Equipos inscritos.
   teams Team[]
   rounds Round[]
 
@@ -142,36 +131,28 @@ model Season {
 model Team {
   id String @id @default(uuid()) @db.Uuid
 
-  // Relaciones principales.
   seasonId  String @map("season_id") @db.Uuid
   captainId String @map("captain_id") @db.Uuid
 
-  // Información del equipo.
   name      String @db.VarChar(80)
   shortName String @map("short_name") @db.VarChar(12)
 
-  // Estado de inscripción.
   status TeamState @default(PENDIENTE_VALIDACION)
 
-  // Motivo de rechazo o suspensión.
   rejectionReason String? @map("rejection_reason")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // Relaciones.
   season Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
   captain User @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Restrict)
 
-  // Plantilla de jugadores.
   players Player[]
 
-  // Pagos asociados al equipo.
   payments Payment[]
   homeMatches Match[] @relation("HomeMatches")
   awayMatches Match[] @relation("AwayMatches")
 
-  // Restricciones de negocio.
   @@unique([seasonId, name])
   @@unique([seasonId, shortName])
   @@unique([seasonId, captainId])
@@ -189,34 +170,29 @@ model Team {
 model Player {
   id String @id @default(uuid()) @db.Uuid
 
-  // Equipo al que pertenece el jugador.
   teamId String @map("team_id") @db.Uuid
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  // Cuenta de usuario vinculada por el organizador.
-  // La relación es opcional y única.
   userId String? @unique @map("user_id") @db.Uuid
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  // Información personal.
   name      String   @db.VarChar(100)
   dui       String   @unique @db.VarChar(10)
   birthDate DateTime @map("birth_date") @db.Date
 
-  // Información deportiva.
   position     Position
   jerseyNumber Int      @map("jersey_number")
 
-  // Baja lógica: null = activo, fecha = dado de baja.
   leftAt DateTime? @map("left_at")
+
+  // HU7: Eventos y participaciones.
+  matchEvents         MatchEvent[]
+  matchParticipations MatchParticipation[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // Número de camiseta único entre jugadores activos del equipo.
-  // La restricción @@unique cubre todos los registros (incluidos dados de baja),
-  // así que la unicidad real entre activos se valida en el servicio.
   @@unique([teamId, jerseyNumber])
   @@index([teamId])
   @@map("players")
@@ -229,21 +205,16 @@ model Player {
 model Payment {
   id String @id @default(uuid()) @db.Uuid
 
-  // Equipo al que corresponde el pago.
   teamId String @unique @map("team_id") @db.Uuid
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  // Información económica.
   amount Decimal @db.Decimal(10, 2)
 
-  // Estado del pago.
   status PaymentState @default(PENDIENTE)
 
-  // Fecha límite para realizar el pago.
   dueDate DateTime @map("due_date")
 
-  // Fecha en que se confirmó el pago.
   paidAt DateTime? @map("paid_at")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -261,16 +232,13 @@ model Payment {
 model Notification {
   id String @id @default(uuid()) @db.Uuid
 
-  // Usuario destinatario.
   userId String @map("user_id") @db.Uuid
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Contenido de la notificación.
   title   String @db.VarChar(150)
   message String @db.VarChar(500)
 
-  // Estado de lectura.
   status NotificationState @default(NO_LEIDA)
 
   createdAt DateTime  @default(now()) @map("created_at")
@@ -312,26 +280,20 @@ enum MatchState {
 model Round {
   id String @id @default(uuid()) @db.Uuid
 
-  // Temporada a la que pertenece.
   seasonId String @map("season_id") @db.Uuid
   season   Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
 
-  // Número de jornada dentro de la temporada.
   numero Int
 
-  // Estado de la jornada.
   state RoundState @default(BORRADOR)
 
-  // Fecha de publicación.
   publishedAt DateTime? @map("published_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // Partidos de la jornada.
   matches Match[]
 
-  // Un número de jornada es único por temporada.
   @@unique([seasonId, numero])
   @@index([seasonId])
   @@index([state])
@@ -345,32 +307,29 @@ model Round {
 model Match {
   id String @id @default(uuid()) @db.Uuid
 
-  // Jornada a la que pertenece.
   roundId String @map("round_id") @db.Uuid
   round   Round  @relation(fields: [roundId], references: [id], onDelete: Restrict)
 
-  // Equipos contendientes.
   homeTeamId String @map("home_team_id") @db.Uuid
   awayTeamId String @map("away_team_id") @db.Uuid
   homeTeam   Team   @relation("HomeMatches", fields: [homeTeamId], references: [id], onDelete: Restrict)
   awayTeam   Team   @relation("AwayMatches", fields: [awayTeamId], references: [id], onDelete: Restrict)
 
-  // Árbitro asignado.
   refereeId String @map("referee_id") @db.Uuid
   referee   User   @relation("RefereeMatches", fields: [refereeId], references: [id], onDelete: Restrict)
 
-  // Cancha asignada.
   court Court
 
-  // Horario del partido.
-  startsAt DateTime  @map("starts_at")
-  endsAt   DateTime  @map("ends_at")
+  startsAt DateTime @map("starts_at")
+  endsAt   DateTime @map("ends_at")
 
-  // Estado del partido.
   state MatchState @default(PROGRAMADO)
 
-  // Motivo de suspensión.
   suspensionReason String? @map("suspension_reason")
+
+  // HU7: Relaciones con eventos y participantes.
+  events         MatchEvent[]
+  participations MatchParticipation[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -382,4 +341,63 @@ model Match {
   @@index([startsAt])
   @@index([state])
   @@map("matches")
+}
+
+// ==========================================
+// MATCH EVENTS (HU7)
+// ==========================================
+
+enum MatchEventType {
+  GOL
+  ASISTENCIA
+  AMARILLA
+  ROJA
+}
+
+model MatchEvent {
+  id String @id @default(uuid()) @db.Uuid
+
+  matchId String @map("match_id") @db.Uuid
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  playerId String @map("player_id") @db.Uuid
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  type   MatchEventType
+  minute Int
+
+  // Solo se completa cuando el evento es ASISTENCIA.
+  relatedGoalId String?      @map("related_goal_id") @db.Uuid
+  relatedGoal   MatchEvent?  @relation("GoalAssists", fields: [relatedGoalId], references: [id], onDelete: Cascade)
+  assists       MatchEvent[] @relation("GoalAssists")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([matchId, type])
+  @@index([playerId])
+  @@index([relatedGoalId])
+  @@map("match_events")
+}
+
+// ==========================================
+// MATCH PARTICIPATIONS (HU7)
+// ==========================================
+
+model MatchParticipation {
+  id String @id @default(uuid()) @db.Uuid
+
+  matchId String @map("match_id") @db.Uuid
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  playerId String @map("player_id") @db.Uuid
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  participated Boolean
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([matchId, playerId])
+  @@index([playerId])
+  @@map("match_participations")
 }
