@@ -349,6 +349,10 @@ model Match {
   startsAt DateTime @map("starts_at")
   endsAt   DateTime @map("ends_at")
 
+  // HU7: Horarios reales del encuentro para el cronómetro en vivo.
+  actualStartedAt  DateTime? @map("actual_started_at")
+  actualFinishedAt DateTime? @map("actual_finished_at")
+
   state MatchState @default(PROGRAMADO)
 
   suspensionReason String? @map("suspension_reason")
