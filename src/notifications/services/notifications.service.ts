@@ -1,11 +1,20 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
-import { MatchEventType, MatchState } from '@PrismaClient';
+import {
+  MatchEventType,
+  MatchState,
+  NotificationCategory,
+  NotificationSourceModule,
+} from '@PrismaClient';
+import { NotificacionService } from './notificacion.service.js';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificacionService: NotificacionService,
+  ) {}
 
   // =====================================================
   // HU2 - NOTIFICACIONES DE EQUIPOS
@@ -146,4 +155,65 @@ export class NotificationsService {
       })),
     });
   }
+
+  // =====================================================
+  // HU17 - NOTIFICACIÓN DE PUBLICACIÓN DE JORNADA
+  // =====================================================
+
+  /**
+   * Avisa a cada capitán con partido en la jornada y a cada árbitro asignado.
+   * El eventoId es estable por jornada, así que reintentos o una segunda
+   * llamada no duplican avisos (clave única eventoId + usuario).
+   */
+  async notifyRoundPublished(roundId: string): Promise<void> {
+    const matches = await this.prisma.match.findMany({
+      where: { roundId },
+      orderBy: { startsAt: 'asc' },
+      select: {
+        refereeId: true,
+        court: true,
+        startsAt: true,
+        homeTeam: { select: { name: true, captainId: true } },
+        awayTeam: { select: { name: true, captainId: true } },
+      },
+    });
+
+    if (matches.length === 0) return;
+
+    const captainIds = new Set<string>();
+    const matchesByReferee = new Map<string, string[]>();
+
+    for (const match of matches) {
+      captainIds.add(match.homeTeam.captainId);
+      captainIds.add(match.awayTeam.captainId);
+
+      const line = `${match.homeTeam.name} vs. ${match.awayTeam.name}, ${match.startsAt.toLocaleString('es-SV', { timeZone: 'America/El_Salvador', dateStyle: 'short', timeStyle: 'short' })}, cancha ${match.court}`;
+      const lines = matchesByReferee.get(match.refereeId) ?? [];
+      lines.push(line);
+      matchesByReferee.set(match.refereeId, lines);
+    }
+
+    await this.notificacionService.crearAvisos(captainIds, {
+      categoria: NotificationCategory.CALENDARIO,
+      moduloOrigen: NotificationSourceModule.CALENDARIO,
+      titulo: 'Jornada publicada',
+      mensaje:
+        'Se publicó una nueva jornada. Consulta el calendario oficial de tu equipo.',
+      referencia: roundId,
+      eventoId: `jornada-publicada:${roundId}`,
+    });
+
+    for (const [refereeId, lines] of matchesByReferee) {
+      await this.notificacionService.crearAviso({
+        destinatarioId: refereeId,
+        categoria: NotificationCategory.CALENDARIO,
+        moduloOrigen: NotificationSourceModule.CALENDARIO,
+        titulo: 'Partido asignado',
+        mensaje: `Se te asignó: ${lines.join(' | ')}`.slice(0, 500),
+        referencia: roundId,
+        eventoId: `partido-asignado:${roundId}`,
+      });
+    }
+  }
 }
+

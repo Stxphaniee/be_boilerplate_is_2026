@@ -52,6 +52,22 @@ enum NotificationState {
   LEIDA
 }
 
+// CategoriaNotificacion (H20/H21): agrupa las preferencias del usuario.
+enum NotificationCategory {
+  PAGOS
+  CALENDARIO
+  RESULTADOS
+  INSCRIPCIONES
+}
+
+// ModuloOrigenNotificacion (H20): módulo que generó el evento.
+enum NotificationSourceModule {
+  INSCRIPCIONES
+  CALENDARIO
+  RESULTADOS
+  PAGOS
+}
+
 // ==========================================
 // USERS
 // ==========================================
@@ -241,9 +257,19 @@ model Notification {
 
   status NotificationState @default(NO_LEIDA)
 
+  // H20: contrato de NotificacionService.crearAviso.
+  category     NotificationCategory     @default(INSCRIPCIONES)
+  sourceModule NotificationSourceModule @default(INSCRIPCIONES) @map("source_module")
+  reference    String?                  @db.VarChar(100)
+  // Obligatorio para avisos automáticos; null solo en avisos legados.
+  eventId      String?                  @map("event_id") @db.VarChar(150)
+  isCritical   Boolean                  @default(false) @map("is_critical")
+
   createdAt DateTime  @default(now()) @map("created_at")
   readAt    DateTime? @map("read_at")
 
+  // Idempotencia: un solo aviso por evento y destinatario.
+  @@unique([eventId, userId])
   @@index([userId])
   @@index([status])
   @@index([createdAt])
