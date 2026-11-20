@@ -89,6 +89,7 @@ model User {
 
   notifications Notification[]
   refereedMatches Match[] @relation("RefereeMatches")
+  auditorias      AuditoriaResultado[] @relation("OrganizerAudits")
 
   @@map("users")
 }
@@ -356,6 +357,7 @@ model Match {
   // HU7: Relaciones con eventos y participantes.
   events         MatchEvent[]
   participations MatchParticipation[]
+  auditorias     AuditoriaResultado[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -426,4 +428,25 @@ model MatchParticipation {
   @@unique([matchId, playerId])
   @@index([playerId])
   @@map("match_participations")
+}
+
+// ==========================================
+// AUDITORIA RESULTADOS (HU9)
+// ==========================================
+
+model AuditoriaResultado {
+  id            String   @id @default(uuid()) @db.Uuid
+  partidoId     String   @map("partido_id") @db.Uuid
+  organizadorId String   @map("organizador_id") @db.Uuid
+  eventosAntes  Json     @map("eventos_antes")
+  eventosDespues Json    @map("eventos_despues")
+  justificacion String   @db.VarChar(300)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  partido     Match @relation(fields: [partidoId], references: [id], onDelete: Cascade)
+  organizador User  @relation("OrganizerAudits", fields: [organizadorId], references: [id], onDelete: Restrict)
+
+  @@index([partidoId])
+  @@index([organizadorId])
+  @@map("auditorias_resultado")
 }
