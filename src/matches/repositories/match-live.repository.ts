@@ -1,6 +1,11 @@
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
-import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
+
 import {
   MatchEventType,
   MatchState,
@@ -75,7 +80,7 @@ export class MatchLiveRepository {
   }
 
   // =====================================================
-  // PARTIDOS ASIGNADOS AL ÁRBITRO
+  // PARTIDOS ASIGNADOS AL ARBITRO
   // =====================================================
 
   findRefereeMatches(refereeId: string): Promise<RefereeMatchData[]> {
@@ -94,7 +99,81 @@ export class MatchLiveRepository {
   }
 
   // =====================================================
-  // ACTUALIZACIÓN DEL ESTADO
+  // HU7 - INFORMACION DEL PANEL DE CONTROL
+  // =====================================================
+
+  findRefereePanel(matchId: string) {
+    const playerArgs = {
+      where: {
+        OR: [
+          { leftAt: null },
+          { matchParticipations: { some: { matchId } } },
+          { matchEvents: { some: { matchId } } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        teamId: true,
+        jerseyNumber: true,
+        position: true,
+        leftAt: true,
+      },
+      orderBy: { jerseyNumber: 'asc' },
+    } satisfies Prisma.PlayerFindManyArgs;
+
+    return this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: {
+        round: {
+          select: { numero: true, state: true },
+        },
+
+        homeTeam: {
+          select: {
+            id: true,
+            name: true,
+            players: playerArgs,
+          },
+        },
+
+        awayTeam: {
+          select: {
+            id: true,
+            name: true,
+            players: playerArgs,
+          },
+        },
+
+        events: {
+          include: {
+            player: {
+              select: {
+                id: true,
+                name: true,
+                teamId: true,
+              },
+            },
+          },
+          orderBy: [
+            { minute: 'asc' },
+            { createdAt: 'asc' },
+            { id: 'asc' },
+          ],
+        },
+
+        participations: {
+          select: {
+            playerId: true,
+            participated: true,
+          },
+        },
+      },
+    });
+  }
+
+  // =====================================================
+  // ACTUALIZACION DEL ESTADO Y CRONOMETRO
   // =====================================================
 
   async updateStateIfCurrent(
@@ -102,16 +181,36 @@ export class MatchLiveRepository {
     currentState: MatchState,
     nextState: MatchState,
   ): Promise<boolean> {
+    const now = new Date();
+
     const result = await this.prisma.match.updateMany({
-      where: { id: matchId, state: currentState },
-      data: { state: nextState },
+      where: {
+        id: matchId,
+        state: currentState,
+      },
+      data: {
+        state: nextState,
+
+        ...(nextState === MatchState.EN_CURSO
+          ? {
+              actualStartedAt: now,
+              actualFinishedAt: null,
+            }
+          : {}),
+
+        ...(nextState === MatchState.FINALIZADO
+          ? {
+              actualFinishedAt: now,
+            }
+          : {}),
+      },
     });
 
     return result.count === 1;
   }
 
   // =====================================================
-  // VALIDACIÓN DE JUGADORES
+  // VALIDACION DE JUGADORES
   // =====================================================
 
   findEligiblePlayer(
@@ -147,7 +246,7 @@ export class MatchLiveRepository {
   }
 
   // =====================================================
-  // VALIDACIÓN DE GOL RELACIONADO
+  // VALIDACION DE GOL RELACIONADO
   // =====================================================
 
   findGoalForMatch(
@@ -175,25 +274,65 @@ export class MatchLiveRepository {
   }
 
   // =====================================================
-  // CREACIÓN DE EVENTOS
+  // CONTROL TRANSACCIONAL DEL PARTIDO
+  // =====================================================
+
+  private async lockMatchInProgress(
+    tx: Prisma.TransactionClient,
+    matchId: string,
+  ): Promise<void> {
+    const rows = await tx.$queryRaw<
+      { state: string }[]
+    >`
+      SELECT "state"::text AS "state"
+      FROM "matches"
+      WHERE "id" = ${matchId}::uuid
+      FOR UPDATE
+    `;
+
+    const match = rows[0];
+
+    if (!match) {
+      throw new NotFoundException(
+        'El partido solicitado no existe.',
+      );
+    }
+
+    if (match.state !== MatchState.EN_CURSO) {
+      throw new ConflictException(
+        'El partido ya no se encuentra EN_CURSO.',
+      );
+    }
+  }
+
+  // =====================================================
+  // CREACION DE EVENTOS
   // =====================================================
 
   createEvent(
     data: CreateMatchEventData,
   ): Promise<MatchEventWithPlayer> {
-    return this.prisma.matchEvent.create({
-      data: {
-        matchId: data.matchId,
-        playerId: data.playerId,
-        type: data.type,
-        minute: data.minute,
-        relatedGoalId: data.relatedGoalId ?? null,
-      },
-      include: {
-        player: {
-          select: { id: true, name: true, teamId: true },
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockMatchInProgress(tx, data.matchId);
+
+      return tx.matchEvent.create({
+        data: {
+          matchId: data.matchId,
+          playerId: data.playerId,
+          type: data.type,
+          minute: data.minute,
+          relatedGoalId: data.relatedGoalId ?? null,
         },
-      },
+        include: {
+          player: {
+            select: {
+              id: true,
+              name: true,
+              teamId: true,
+            },
+          },
+        },
+      });
     });
   }
 
@@ -207,9 +346,15 @@ export class MatchLiveRepository {
     return this.prisma.match.findUnique({
       where: { id: matchId },
       include: {
-        round: { select: { numero: true } },
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
+        round: {
+          select: { numero: true },
+        },
+        homeTeam: {
+          select: { id: true, name: true },
+        },
+        awayTeam: {
+          select: { id: true, name: true },
+        },
         events: {
           where: { type: MatchEventType.GOL },
           include: {
@@ -230,25 +375,29 @@ export class MatchLiveRepository {
     matchId: string,
     participants: MatchParticipationData[],
   ) {
-    return this.prisma.$transaction(
-      participants.map((participant) =>
-        this.prisma.matchParticipation.upsert({
-          where: {
-            matchId_playerId: {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockMatchInProgress(tx, matchId);
+
+      return Promise.all(
+        participants.map((participant) =>
+          tx.matchParticipation.upsert({
+            where: {
+              matchId_playerId: {
+                matchId,
+                playerId: participant.jugadorId,
+              },
+            },
+            create: {
               matchId,
               playerId: participant.jugadorId,
+              participated: participant.participo,
             },
-          },
-          create: {
-            matchId,
-            playerId: participant.jugadorId,
-            participated: participant.participo,
-          },
-          update: {
-            participated: participant.participo,
-          },
-        }),
-      ),
-    );
+            update: {
+              participated: participant.participo,
+            },
+          }),
+        ),
+      );
+    });
   }
 }
