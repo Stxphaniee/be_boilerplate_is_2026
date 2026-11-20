@@ -46,13 +46,17 @@ export class RoundRepository {
     });
   }
 
-  publish(id: string): Promise<Round> {
-    return this.prisma.round.update({
-      where: { id },
+  async publish(id: string): Promise<Round | null> {
+    const { count } = await this.prisma.round.updateMany({
+      where: { id, state: RoundState.BORRADOR },
       data: {
         state: RoundState.PUBLICADA,
         publishedAt: new Date(),
       },
     });
+
+    if (count === 0) return null;
+
+    return this.findById(id);
   }
 }

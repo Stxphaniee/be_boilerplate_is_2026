@@ -10,6 +10,7 @@ import { RoundRepository, MatchRepository } from '@Matches/repositories';
 import type { MatchCalendarData } from '@Matches/repositories';
 import { SeasonRepository, TeamRepository } from '@Teams/repositories';
 import { PrismaService } from '@Prisma/services';
+import { NotificationsService } from '../../notifications/services/notifications.service.js';
 
 import type {
   CreateMatchDto,
@@ -40,6 +41,7 @@ export class MatchesService {
     private readonly seasonRepository: SeasonRepository,
     private readonly teamRepository: TeamRepository,
     private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // =====================================================
@@ -91,7 +93,19 @@ export class MatchesService {
       );
     }
 
-    return this.roundRepository.publish(roundId);
+    // Transición atómica BORRADOR → PUBLICADA: ante dos publicaciones
+    // simultáneas solo una gana y la otra recibe 409 (H17).
+    const published = await this.roundRepository.publish(roundId);
+
+    if (!published) {
+      throw new ConflictException(
+        'Solo se pueden publicar jornadas en estado BORRADOR.',
+      );
+    }
+
+    await this.notificationsService.notifyRoundPublished(roundId);
+
+    return published;
   }
 
   // =====================================================
