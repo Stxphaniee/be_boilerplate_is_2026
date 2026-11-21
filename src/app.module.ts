@@ -13,6 +13,7 @@ import { TeamsModule } from '@Teams';
 import { UsersModule } from '@Users';
 import { validateEnv } from '@Config';
 import { MatchesModule } from '@Matches';
+import { ReportsModule } from './reports/reports.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 
 @Module({
@@ -29,6 +30,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     AuthModule,
     TeamsModule,
     MatchesModule,
+    ReportsModule,
     NotificationsModule,
     PlayerStatsModule,
     RankingModule,
