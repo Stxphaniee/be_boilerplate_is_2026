@@ -1,0 +1,290 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
+
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+
+import { CurrentUser, Roles } from '@Auth/decorators';
+import { MatchesService } from '@Matches/services';
+
+import {
+  CreateMatchDto,
+  CreateRoundDto,
+  MatchCalendarResponseDto,
+  MatchResponseDto,
+  RoundResponseDto,
+  UpdateMatchDto,
+} from '@Matches/dto';
+
+import { Role, type User } from '@PrismaClient';
+
+@ApiTags('matches')
+@ApiBearerAuth()
+@Controller()
+export class MatchesController {
+  constructor(
+    private readonly matchesService: MatchesService,
+  ) {}
+
+  // =====================================================
+  // HU6 - CALENDARIO DEL EQUIPO AUTENTICADO
+  // =====================================================
+
+  @Get('equipos/mis-partidos')
+  @Roles(Role.JUGADOR, Role.CAPITAN)
+  @ApiOperation({
+    summary: 'Consulta el calendario del equipo del usuario autenticado (HU6)',
+  })
+  @ApiOkResponse({
+    type: [MatchCalendarResponseDto],
+    description: 'Partidos de jornadas publicadas, ordenados por fecha.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description:
+      'El usuario no tiene participación activa o su cuenta no está vinculada a una ficha de jugador.',
+  })
+  async findMyMatches(
+    @CurrentUser() user: User,
+  ): Promise<MatchCalendarResponseDto[]> {
+    const { teamId, matches } =
+      await this.matchesService.findMyMatches(user);
+
+    return matches.map((match) =>
+      MatchCalendarResponseDto.fromEntity(match, teamId),
+    );
+  }
+
+  // =====================================================
+  // CONSULTAS AUXILIARES HU4
+  // =====================================================
+
+  @Get('equipos-disponibles')
+  @Roles(Role.ORGANIZADOR)
+  @ApiOperation({
+    summary: 'Lista equipos aprobados y con cuota pagada',
+  })
+  @ApiOkResponse({
+    description: 'Equipos disponibles para programar partidos.',
+  })
+  async findAvailableTeams() {
+    return this.matchesService.findAvailableTeams();
+  }
+
+  @Get('arbitros')
+  @Roles(Role.ORGANIZADOR)
+  @ApiOperation({
+    summary: 'Lista árbitros activos',
+  })
+  @ApiOkResponse({
+    description: 'Árbitros disponibles para asignación.',
+  })
+  async findReferees() {
+    return this.matchesService.findReferees();
+  }
+
+  @Get('jornadas/:id/partidos')
+  @Roles(Role.ORGANIZADOR)
+  @ApiOperation({
+    summary: 'Consulta los partidos de una jornada',
+  })
+  @ApiOkResponse({
+    type: [MatchResponseDto],
+  })
+  @ApiNotFoundResponse({
+    description: 'La jornada no existe.',
+  })
+  async findMatchesByRound(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<MatchResponseDto[]> {
+    const matches =
+      await this.matchesService.findMatchesByRound(id);
+
+    return matches.map(MatchResponseDto.fromEntity);
+  }
+
+  // ==========================================
+  // H4 - JORNADAS
+  // ==========================================
+
+  @Get('jornadas')
+  @Roles(Role.ORGANIZADOR)
+  @ApiOperation({
+    summary: 'Lista las jornadas de la temporada activa (H4)',
+  })
+  @ApiOkResponse({
+    type: [RoundResponseDto],
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Acceso exclusivo para organizadores.',
+  })
+  @ApiNotFoundResponse({
+    description: 'No hay una temporada activa.',
+  })
+  async findAllRounds(): Promise<RoundResponseDto[]> {
+    const rounds =
+      await this.matchesService.findAllRounds();
+
+    return rounds.map(RoundResponseDto.fromEntity);
+  }
+
+  @Post('jornadas')
+  @Roles(Role.ORGANIZADOR)
+  @ApiOperation({
+    summary: 'Crea una jornada BORRADOR (H4)',
+  })
+  @ApiCreatedResponse({
+    type: RoundResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Número de jornada inválido.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Acceso exclusivo para organizadores.',
+  })
+  @ApiConflictResponse({
+    description: 'El número de jornada ya existe.',
+  })
+  async createRound(
+    @Body() dto: CreateRoundDto,
+  ): Promise<RoundResponseDto> {
+    const round =
+      await this.matchesService.createRound(dto);
+
+    return RoundResponseDto.fromEntity(round);
+  }
+
+  @Patch('jornadas/:id/publicar')
+  @Roles(Role.ORGANIZADOR)
+  @ApiOperation({
+    summary: 'Publica una jornada BORRADOR (H4)',
+  })
+  @ApiOkResponse({
+    type: RoundResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Acceso exclusivo para organizadores.',
+  })
+  @ApiNotFoundResponse({
+    description: 'La jornada no existe.',
+  })
+  @ApiConflictResponse({
+    description:
+      'La jornada no está en BORRADOR o tiene equipos suspendidos.',
+  })
+  async publishRound(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<RoundResponseDto> {
+    const round =
+      await this.matchesService.publishRound(id);
+
+    return RoundResponseDto.fromEntity(round);
+  }
+
+  // ==========================================
+  // H4 - PROGRAMACIÓN DE PARTIDOS
+  // ==========================================
+
+  @Post('partidos')
+  @Roles(Role.ORGANIZADOR)
+  @ApiOperation({
+    summary: 'Programa un partido (H4)',
+  })
+  @ApiCreatedResponse({
+    type: MatchResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Fecha pasada, mismo equipo o datos inválidos.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Acceso exclusivo para organizadores.',
+  })
+  @ApiNotFoundResponse({
+    description:
+      'Jornada, equipo o árbitro no encontrado.',
+  })
+  @ApiConflictResponse({
+    description:
+      'Traslape de cancha o equipo, enfrentamiento duplicado, cuota pendiente, equipo no aprobado o árbitro sin rol.',
+  })
+  async createMatch(
+    @Body() dto: CreateMatchDto,
+  ): Promise<MatchResponseDto> {
+    const match =
+      await this.matchesService.createMatch(dto);
+
+    return MatchResponseDto.fromEntity(match);
+  }
+
+  // =====================================================
+  // H5 - EDICIÓN, SUSPENSIÓN Y CANCELACIÓN
+  // =====================================================
+
+  @Patch('partidos/:id')
+  @Roles(Role.ORGANIZADOR)
+  @ApiOperation({
+    summary:
+      'Modifica, suspende o cancela un partido programado (H5)',
+  })
+  @ApiOkResponse({
+    type: MatchResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Datos inválidos o motivo de suspensión faltante.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Falta el token o es inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Acceso exclusivo para organizadores.',
+  })
+  @ApiNotFoundResponse({
+    description: 'El partido no existe.',
+  })
+  @ApiConflictResponse({
+    description:
+      'Estado incompatible, traslape de cancha o equipos.',
+  })
+  async updateMatch(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateMatchDto,
+  ): Promise<MatchResponseDto> {
+    const match =
+      await this.matchesService.updateMatch(id, dto);
+
+    return MatchResponseDto.fromEntity(match);
+  }
+}

@@ -1,26 +1,11 @@
-// Documentación: https://www.prisma.io/docs
-//
-// La URL de conexión NO vive acá: en Prisma 7 el CLI la lee desde
-// prisma.config.ts y el runtime la recibe vía driver adapter (PrismaPg),
-// configurado en src/prisma/prisma.service.ts.
 
 generator client {
   provider = "prisma-client"
+  output   = "../src/generated/prisma"
 
-  // `prisma-client-js` está deprecado. El generador nuevo exige un `output`
-  // explícito y genera dentro del proyecto en vez de node_modules.
-  // Tiene que caer dentro de src/ porque tsconfig.build.json compila
-  // únicamente ese directorio (rootDir: ./src, include: ["src"]).
-  output = "../src/generated/prisma"
-
-  // Query compiler en WASM: sin binario nativo de Rust, lo que permite usar
-  // imágenes Alpine sin instalar libssl.
   engineType = "client"
   runtime    = "nodejs"
 
-  // El proyecto es ESM puro ("type": "module" + moduleResolution nodenext),
-  // así que el cliente se genera como ESM y sus imports relativos llevan la
-  // extensión .js que tsc espera al emitir.
   moduleFormat           = "esm"
   generatedFileExtension = "ts"
   importFileExtension    = "js"
@@ -30,24 +15,91 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Role {
+  JUGADOR
+  CAPITAN
+  ARBITRO
+  ORGANIZADOR
+  ADMINISTRADOR
+}
+
+enum TeamState {
+  PENDIENTE_VALIDACION
+  APROBADO
+  RECHAZADO
+  SUSPENDIDO
+}
+
+enum Position {
+  PORTERO
+  DEFENSA
+  MEDIOCAMPISTA
+  DELANTERO
+}
+
+enum PaymentState {
+  PENDIENTE
+  PAGADO
+  VENCIDO
+}
+
+enum NotificationState {
+  NO_LEIDA
+  LEIDA
+}
+
+// CategoriaNotificacion (H20/H21): agrupa las preferencias del usuario.
+enum NotificationCategory {
+  PAGOS
+  CALENDARIO
+  RESULTADOS
+  INSCRIPCIONES
+}
+
+// ModuloOrigenNotificacion (H20): módulo que generó el evento.
+enum NotificationSourceModule {
+  INSCRIPCIONES
+  CALENDARIO
+  RESULTADOS
+  PAGOS
+}
+
+// ==========================================
+// USERS
+// ==========================================
+
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   email        String   @unique
   passwordHash String   @map("password_hash")
+  role         Role     @default(JUGADOR)
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   refreshTokens RefreshToken[]
 
+  captainedTeams Team[] @relation("TeamCaptain")
+
+  player Player?
+
+  notifications Notification[]
+  refereedMatches Match[] @relation("RefereeMatches")
+  auditorias      AuditoriaResultado[] @relation("OrganizerAudits")
+
   @@map("users")
 }
 
-model RefreshToken {
-  id String @id @default(uuid()) @db.Uuid
+// ==========================================
+// REFRESH TOKENS
+// ==========================================
 
-  // Se guarda el SHA-256 del token, nunca el token en claro: si se filtra la
-  // base, los refresh tokens emitidos no son utilizables.
+model RefreshToken {
+  id        String @id @default(uuid()) @db.Uuid
   tokenHash String @unique @map("token_hash")
 
   userId String @map("user_id") @db.Uuid
@@ -59,4 +111,346 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+// ==========================================
+// SEASONS
+// ==========================================
+
+model Season {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(80)
+
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+
+  registrationStart DateTime @map("registration_start")
+  registrationEnd   DateTime @map("registration_end")
+
+  rosterStart DateTime? @map("roster_start")
+  rosterEnd   DateTime? @map("roster_end")
+
+  fee Decimal @db.Decimal(10, 2)
+
+  isActive Boolean @default(true) @map("is_active")
+
+  teams Team[]
+  rounds Round[]
+
+  @@index([isActive])
+  @@map("seasons")
+}
+
+// ==========================================
+// TEAMS
+// ==========================================
+
+model Team {
+  id String @id @default(uuid()) @db.Uuid
+
+  seasonId  String @map("season_id") @db.Uuid
+  captainId String @map("captain_id") @db.Uuid
+
+  name      String @db.VarChar(80)
+  shortName String @map("short_name") @db.VarChar(12)
+
+  status TeamState @default(PENDIENTE_VALIDACION)
+
+  rejectionReason String? @map("rejection_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  captain User @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Restrict)
+
+  players Player[]
+
+  payments Payment[]
+  homeMatches Match[] @relation("HomeMatches")
+  awayMatches Match[] @relation("AwayMatches")
+
+  @@unique([seasonId, name])
+  @@unique([seasonId, shortName])
+  @@unique([seasonId, captainId])
+
+  @@index([seasonId])
+  @@index([captainId])
+  @@index([status])
+  @@map("teams")
+}
+
+// ==========================================
+// PLAYERS
+// ==========================================
+
+model Player {
+  id String @id @default(uuid()) @db.Uuid
+
+  teamId String @map("team_id") @db.Uuid
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  userId String? @unique @map("user_id") @db.Uuid
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  name      String   @db.VarChar(100)
+  dui       String   @unique @db.VarChar(10)
+  birthDate DateTime @map("birth_date") @db.Date
+
+  position     Position
+  jerseyNumber Int      @map("jersey_number")
+
+  leftAt DateTime? @map("left_at")
+
+  // HU7: Eventos y participaciones.
+  matchEvents         MatchEvent[]
+  matchParticipations MatchParticipation[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([teamId, jerseyNumber])
+  @@index([teamId])
+  @@map("players")
+}
+
+// ==========================================
+// PAYMENTS
+// ==========================================
+
+model Payment {
+  id String @id @default(uuid()) @db.Uuid
+
+  teamId String @unique @map("team_id") @db.Uuid
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  amount Decimal @db.Decimal(10, 2)
+
+  status PaymentState @default(PENDIENTE)
+
+  dueDate DateTime @map("due_date")
+
+  paidAt DateTime? @map("paid_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([dueDate])
+  @@map("payments")
+}
+
+// ==========================================
+// NOTIFICATIONS
+// ==========================================
+
+model Notification {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title   String @db.VarChar(150)
+  message String @db.VarChar(500)
+
+  status NotificationState @default(NO_LEIDA)
+
+  // H20: contrato de NotificacionService.crearAviso.
+  category     NotificationCategory     @default(INSCRIPCIONES)
+  sourceModule NotificationSourceModule @default(INSCRIPCIONES) @map("source_module")
+  reference    String?                  @db.VarChar(100)
+  // Obligatorio para avisos automáticos; null solo en avisos legados.
+  eventId      String?                  @map("event_id") @db.VarChar(150)
+  isCritical   Boolean                  @default(false) @map("is_critical")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  readAt    DateTime? @map("read_at")
+
+  // Idempotencia: un solo aviso por evento y destinatario.
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ==========================================
+// ENUMS - PARTIDOS
+// ==========================================
+
+enum Court {
+  A
+  B
+  C
+}
+
+enum RoundState {
+  BORRADOR
+  PUBLICADA
+}
+
+enum MatchState {
+  PROGRAMADO
+  EN_CURSO
+  FINALIZADO
+  SUSPENDIDO
+  CANCELADO
+}
+
+// ==========================================
+// ROUNDS (JORNADAS)
+// ==========================================
+
+model Round {
+  id String @id @default(uuid()) @db.Uuid
+
+  seasonId String @map("season_id") @db.Uuid
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+
+  numero Int
+
+  state RoundState @default(BORRADOR)
+
+  publishedAt DateTime? @map("published_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  matches Match[]
+
+  @@unique([seasonId, numero])
+  @@index([seasonId])
+  @@index([state])
+  @@map("rounds")
+}
+
+// ==========================================
+// MATCHES (PARTIDOS)
+// ==========================================
+
+model Match {
+  id String @id @default(uuid()) @db.Uuid
+
+  roundId String @map("round_id") @db.Uuid
+  round   Round  @relation(fields: [roundId], references: [id], onDelete: Restrict)
+
+  homeTeamId String @map("home_team_id") @db.Uuid
+  awayTeamId String @map("away_team_id") @db.Uuid
+  homeTeam   Team   @relation("HomeMatches", fields: [homeTeamId], references: [id], onDelete: Restrict)
+  awayTeam   Team   @relation("AwayMatches", fields: [awayTeamId], references: [id], onDelete: Restrict)
+
+  refereeId String @map("referee_id") @db.Uuid
+  referee   User   @relation("RefereeMatches", fields: [refereeId], references: [id], onDelete: Restrict)
+
+  court Court
+
+  startsAt DateTime @map("starts_at")
+  endsAt   DateTime @map("ends_at")
+
+  // HU7: Horarios reales del encuentro para el cronómetro en vivo.
+  actualStartedAt  DateTime? @map("actual_started_at")
+  actualFinishedAt DateTime? @map("actual_finished_at")
+
+  state MatchState @default(PROGRAMADO)
+
+  suspensionReason String? @map("suspension_reason")
+
+  // HU7: Relaciones con eventos y participantes.
+  events         MatchEvent[]
+  participations MatchParticipation[]
+  auditorias     AuditoriaResultado[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([roundId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([refereeId])
+  @@index([startsAt])
+  @@index([state])
+  @@map("matches")
+}
+
+// ==========================================
+// MATCH EVENTS (HU7)
+// ==========================================
+
+enum MatchEventType {
+  GOL
+  ASISTENCIA
+  AMARILLA
+  ROJA
+}
+
+model MatchEvent {
+  id String @id @default(uuid()) @db.Uuid
+
+  matchId String @map("match_id") @db.Uuid
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  playerId String @map("player_id") @db.Uuid
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  type   MatchEventType
+  minute Int
+
+  // Solo se completa cuando el evento es ASISTENCIA.
+  relatedGoalId String?      @map("related_goal_id") @db.Uuid
+  relatedGoal   MatchEvent?  @relation("GoalAssists", fields: [relatedGoalId], references: [id], onDelete: Cascade)
+  assists       MatchEvent[] @relation("GoalAssists")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([matchId, type])
+  @@index([playerId])
+  @@index([relatedGoalId])
+  @@map("match_events")
+}
+
+// ==========================================
+// MATCH PARTICIPATIONS (HU7)
+// ==========================================
+
+model MatchParticipation {
+  id String @id @default(uuid()) @db.Uuid
+
+  matchId String @map("match_id") @db.Uuid
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  playerId String @map("player_id") @db.Uuid
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  participated Boolean
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([matchId, playerId])
+  @@index([playerId])
+  @@map("match_participations")
+}
+
+// ==========================================
+// AUDITORIA RESULTADOS (HU9)
+// ==========================================
+
+model AuditoriaResultado {
+  id            String   @id @default(uuid()) @db.Uuid
+  partidoId     String   @map("partido_id") @db.Uuid
+  organizadorId String   @map("organizador_id") @db.Uuid
+  eventosAntes  Json     @map("eventos_antes")
+  eventosDespues Json    @map("eventos_despues")
+  justificacion String   @db.VarChar(300)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  partido     Match @relation(fields: [partidoId], references: [id], onDelete: Cascade)
+  organizador User  @relation("OrganizerAudits", fields: [organizadorId], references: [id], onDelete: Restrict)
+
+  @@index([partidoId])
+  @@index([organizadorId])
+  @@map("auditorias_resultado")
 }
