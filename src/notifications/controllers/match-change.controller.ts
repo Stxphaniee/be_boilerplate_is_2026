@@ -11,8 +11,8 @@ export class MatchChangeController {
 
   @Post(':id/notificar-cambio')
   async notifyChange(
-    @Param('id', ParseIntPipe) matchId: number,
-    @Body() body: { change: string; userId: number },
+    @Param('id', ParseIntPipe) matchId: string,
+    @Body() body: { change: string; userId: string },
   ) {
     const { change, userId } = body;
     return this.matchChangeService.notifyMatchChange(matchId, change, userId);

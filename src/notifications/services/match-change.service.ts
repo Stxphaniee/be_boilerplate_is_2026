@@ -1,30 +1,41 @@
+
 import { Injectable } from '@nestjs/common';
-import { NotificacionService } from './notificacion.service';
+import {
+  NotificationCategory,
+  NotificationSourceModule,
+} from '@PrismaClient';
+import { NotificacionService } from './notificacion.service.js';
 
 /**
- * Service responsible for creating a notification when a match changes.
- * This is a minimal implementation to satisfy story HU16. It receives the
- * match identifier and a description of the change (e.g. "score updated",
- * "status changed"). The service delegates to the existing NotificacionService
- * to create an idempotent notification.
+ * HU16 - Notificaciones por cambios en partidos.
+ *
+ * Notifica al usuario cuando se modifica un partido.
+ * Utiliza el servicio existente NotificacionService
+ * para registrar las notificaciones.
  */
 @Injectable()
 export class MatchChangeService {
-  constructor(private readonly notificacionService: NotificacionService) {}
+  constructor(
+    private readonly notificacionService: NotificacionService,
+  ) {}
 
-  async notifyMatchChange(matchId: number, changeDescription: string, userId: number) {
-    // Build a simple notification payload.
+  async notifyMatchChange(
+    matchId: string,
+    changeDescription: string,
+    userId: string,
+  ) {
     const notification = {
-      userId,
-      eventId: `match-${matchId}-${Date.now()}`,
-      category: 'CAMBIO_PARTIDO', // Enum defined in H20 schema.
-      sourceModule: 'PARTIDO',
-      reference: matchId.toString(),
-      isCritical: false,
-      message: `El partido ${matchId} sufrió el siguiente cambio: ${changeDescription}`,
+      destinatarioId: userId,
+      categoria: NotificationCategory.CALENDARIO,
+      moduloOrigen: NotificationSourceModule.CALENDARIO,
+      titulo: 'Cambio en partido',
+      mensaje: `El partido ${matchId} sufrió el siguiente cambio: ${changeDescription}`.slice(0, 500),
+      referencia: matchId,
+      eventoId: `cambio-partido:${matchId}:${changeDescription}`,
     };
-    // Use the existing service that guarantees idempotency.
-    await this.notificacionService.createNotification(notification);
+
+    await this.notificacionService.crearAviso(notification);
+
     return notification;
   }
 }

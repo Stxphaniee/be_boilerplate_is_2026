@@ -7,3 +7,4 @@ export * from './match-live.dto.js';
 export * from './match-results.dto.js';
 export * from './match-correction.dto.js';
 export * from './standings.dto.js';
+export * from './gallery-image.dto.js';

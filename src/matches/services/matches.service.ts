@@ -32,7 +32,7 @@ import {
   PaymentState,
 } from '@PrismaClient';
 
-import type { Match, Round, User, Team } from '@PrismaClient';
+import type { Match, Round, User, Team, GalleryImage } from '@PrismaClient';
 
 const MATCH_DURATION_MINUTES = 90;
 
@@ -658,5 +658,16 @@ export class MatchesService {
       await Promise.allSettled(writtenPaths.map((p) => unlink(p)));
       throw err;
     }
+  }
+
+  async getGalleryImages(matchId: string): Promise<GalleryImage[]> {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: { galleryImages: true },
+    });
+    if (!match) {
+      throw new NotFoundException('El partido solicitado no existe.');
+    }
+    return match.galleryImages;
   }
 }
