@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -87,8 +86,9 @@ model User {
 
   player Player?
 
-  notifications Notification[]
-  refereedMatches Match[] @relation("RefereeMatches")
+  notifications            Notification[]
+  refereedMatches          Match[]                   @relation("RefereeMatches")
+  preferenciaNotificacions PreferenciaNotificacion[]
 
   @@map("users")
 }
@@ -133,7 +133,7 @@ model Season {
 
   isActive Boolean @default(true) @map("is_active")
 
-  teams Team[]
+  teams  Team[]
   rounds Round[]
 
   @@index([isActive])
@@ -160,19 +160,18 @@ model Team {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  season Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
-  captain User @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Restrict)
+  season  Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  captain User   @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Restrict)
 
   players Player[]
 
-  payments Payment[]
-  homeMatches Match[] @relation("HomeMatches")
-  awayMatches Match[] @relation("AwayMatches")
+  payments    Payment[]
+  homeMatches Match[]   @relation("HomeMatches")
+  awayMatches Match[]   @relation("AwayMatches")
 
   @@unique([seasonId, name])
   @@unique([seasonId, shortName])
   @@unique([seasonId, captainId])
-
   @@index([seasonId])
   @@index([captainId])
   @@index([status])
@@ -191,7 +190,7 @@ model Player {
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   userId String? @unique @map("user_id") @db.Uuid
-  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   name      String   @db.VarChar(100)
   dui       String   @unique @db.VarChar(10)
@@ -430,4 +429,15 @@ model MatchParticipation {
   @@unique([matchId, playerId])
   @@index([playerId])
   @@map("match_participations")
+}
+
+model PreferenciaNotificacion {
+  id        String               @id @default(uuid()) @db.Uuid
+  userId    String               @map("user_id") @db.Uuid
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoria NotificationCategory @default(INSCRIPCIONES)
+  activa    Boolean              @default(true)
+
+  @@unique([userId, categoria])
+  @@map("preferencias_notificacion")
 }
