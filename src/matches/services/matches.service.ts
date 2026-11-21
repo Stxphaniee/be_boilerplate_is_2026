@@ -1,3 +1,6 @@
+import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { extname, join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -506,6 +509,154 @@ export class MatchesService {
       throw new ConflictException(
         `El equipo "${team.name}" no tiene la cuota de inscripción pagada.`,
       );
+    }
+  }
+
+  // =====================================================
+  // HU18 - SUBIDA DE CONTENIDO MULTIMEDIA DE PARTIDO
+  // =====================================================
+
+  private static readonly MAX_GALLERY_FILE_BYTES = 50 * 1024 * 1024;
+  private static readonly MAX_GALLERY_FILES_PER_MATCH = 20;
+
+  private detectValidMedia(
+    file: { originalname?: string; mimetype?: string; size?: number; buffer?: Buffer },
+  ): { ext: string; mimeType: string; tipo: 'IMAGEN' | 'VIDEO' } {
+    const ext = extname(file.originalname ?? '').toLowerCase();
+    const mime = (file.mimetype ?? '').toLowerCase();
+    const buf = file.buffer;
+    const size = typeof file.size === 'number' ? file.size : (buf?.length ?? 0);
+
+    if (!buf || size <= 0 || size > MatchesService.MAX_GALLERY_FILE_BYTES) {
+      throw new BadRequestException(
+        `El archivo "${file.originalname ?? 'archivo'}" excede el límite de 50 MB o está vacío.`,
+      );
+    }
+
+    const isJpg =
+      (ext === '.jpg' || ext === '.jpeg') &&
+      mime === 'image/jpeg' &&
+      buf.length >= 3 &&
+      buf[0] === 0xff &&
+      buf[1] === 0xd8 &&
+      buf[2] === 0xff;
+
+    const isPng =
+      ext === '.png' &&
+      mime === 'image/png' &&
+      buf.length >= 8 &&
+      buf[0] === 0x89 &&
+      buf[1] === 0x50 &&
+      buf[2] === 0x4e &&
+      buf[3] === 0x47 &&
+      buf[4] === 0x0d &&
+      buf[5] === 0x0a &&
+      buf[6] === 0x1a &&
+      buf[7] === 0x0a;
+
+    const isMp4 =
+      ext === '.mp4' &&
+      mime === 'video/mp4' &&
+      buf.length >= 12 &&
+      buf.subarray(4, 8).toString('ascii') === 'ftyp';
+
+    if (isJpg || isPng) {
+      return { ext: isPng ? '.png' : '.jpg', mimeType: mime, tipo: 'IMAGEN' };
+    }
+    if (isMp4) {
+      return { ext: '.mp4', mimeType: 'video/mp4', tipo: 'VIDEO' };
+    }
+
+    throw new BadRequestException(
+      `Archivo inválido (${file.originalname ?? 'archivo'}). Solo se admiten JPG, PNG y MP4 válidos.`,
+    );
+  }
+
+  async uploadMatchGallery(
+    matchId: string,
+    files: Array<{ originalname?: string; mimetype?: string; size?: number; buffer?: Buffer }>,
+  ): Promise<Array<{ id: string; url: string; tipo: 'IMAGEN' | 'VIDEO'; tamanoBytes: number; mimeType: string; createdAt: Date }>> {
+    if (!Array.isArray(files) || files.length === 0) {
+      throw new BadRequestException('Debes adjuntar al menos un archivo JPG, PNG o MP4.');
+    }
+
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      select: { id: true, state: true },
+    });
+
+    if (!match) {
+      throw new NotFoundException('El partido solicitado no existe.');
+    }
+
+    if (match.state !== MatchState.FINALIZADO) {
+      throw new ConflictException(
+        'Solo se puede subir contenido multimedia a partidos en estado FINALIZADO.',
+      );
+    }
+
+    const validated = files.map((file) => {
+      const meta = this.detectValidMedia(file);
+      const size = typeof file.size === 'number' ? file.size : (file.buffer?.length ?? 0);
+      return { ...meta, size, buffer: file.buffer! };
+    });
+
+    const dir = join(process.cwd(), 'uploads', 'gallery', matchId);
+    await mkdir(dir, { recursive: true });
+    const writtenPaths: string[] = [];
+
+    try {
+      const createdItems = await this.prisma.$transaction(async (tx) => {
+        const existingCount = await tx.galleryImage.count({
+          where: { matchId },
+        });
+
+        if (existingCount + validated.length > MatchesService.MAX_GALLERY_FILES_PER_MATCH) {
+          throw new ConflictException(
+            `Se excede el cupo máximo de ${MatchesService.MAX_GALLERY_FILES_PER_MATCH} archivos por partido (actuales: ${existingCount}).`,
+          );
+        }
+
+        const results: Array<{
+          id: string;
+          url: string;
+          tipo: 'IMAGEN' | 'VIDEO';
+          tamanoBytes: number;
+          mimeType: string;
+          createdAt: Date;
+        }> = [];
+
+        for (const item of validated) {
+          const filename = `${randomUUID()}${item.ext}`;
+          const fullPath = join(dir, filename);
+          await writeFile(fullPath, item.buffer);
+          writtenPaths.push(fullPath);
+
+          const publicUrl = `/uploads/gallery/${matchId}/${filename}`;
+          const record = await tx.galleryImage.create({
+            data: {
+              matchId,
+              url: publicUrl,
+            },
+          });
+
+          results.push({
+            id: record.id,
+            url: record.url,
+            tipo: item.tipo,
+            tamanoBytes: item.size,
+            mimeType: item.mimeType,
+            createdAt: record.createdAt,
+          });
+        }
+
+        return results;
+      });
+
+      return createdItems;
+    } catch (err) {
+      await Promise.allSettled(writtenPaths.map((p) => unlink(p)));
+      throw err;
     }
   }
 }
