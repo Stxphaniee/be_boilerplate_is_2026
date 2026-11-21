@@ -1,5 +1,6 @@
 import { PlayerStatsModule } from './player-stats/player-stats.module.js';
 import { RankingModule } from './ranking/ranking.module.js';
+import { RegistrationPaymentsModule } from './registration-payments/registration-payments.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -28,6 +29,7 @@ import { MatchesModule } from '@Matches';
     MatchesModule,
     PlayerStatsModule,
     RankingModule,
+    RegistrationPaymentsModule,
   ],
   providers: [
     {
