@@ -5,14 +5,16 @@ import { AdminPaymentsModule } from './admin-payments/admin-payments.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { AuthModule } from './auth/index.js';
-import { JwtAuthGuard, RolesGuard } from './auth/guards/index.js';
-import { HealthModule } from './health/index.js';
-import { PrismaModule } from './prisma/index.js';
-import { TeamsModule } from './teams/index.js';
-import { UsersModule } from './users/index.js';
-import { validateEnv } from './config/index.js';
-import { MatchesModule } from './matches/index.js';
+import { AuthModule } from '@Auth';
+import { JwtAuthGuard, RolesGuard } from '@Auth/guards';
+import { HealthModule } from '@Health';
+import { PrismaModule } from '@Prisma';
+import { TeamsModule } from '@Teams';
+import { UsersModule } from '@Users';
+import { validateEnv } from '@Config';
+import { MatchesModule } from '@Matches';
+import { ReportsModule } from './reports/reports.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { MatchesModule } from './matches/index.js';
     AuthModule,
     TeamsModule,
     MatchesModule,
+    ReportsModule,
+    NotificationsModule,
     PlayerStatsModule,
     RankingModule,
     RegistrationPaymentsModule,

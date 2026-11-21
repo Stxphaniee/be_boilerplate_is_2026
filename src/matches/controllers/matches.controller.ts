@@ -1,3 +1,5 @@
+﻿import { UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import {
   Body,
   Controller,
@@ -21,8 +23,8 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-import { CurrentUser, Roles } from '../../auth/decorators/index.js';
-import { MatchesService } from '../services/index.js';
+import { CurrentUser, Roles } from '@Auth/decorators';
+import { MatchesService } from '@Matches/services';
 
 import {
   CreateMatchDto,
@@ -31,9 +33,10 @@ import {
   MatchResponseDto,
   RoundResponseDto,
   UpdateMatchDto,
-} from '../dto/index.js';
+  GalleryImageDto,
+} from '@Matches/dto';
 
-import { Role, type User } from '../../generated/prisma/client.js';
+import { Role, type User } from '@PrismaClient';
 
 @ApiTags('matches')
 @ApiBearerAuth()
@@ -286,5 +289,38 @@ export class MatchesController {
       await this.matchesService.updateMatch(id, dto);
 
     return MatchResponseDto.fromEntity(match);
+  }
+
+  // =====================================================
+  // HU18 - SUBIDA DE CONTENIDO MULTIMEDIA DE PARTIDO
+  // =====================================================
+
+  @Post(['partidos/:id/galeria', 'api/partidos/:id/galeria'])
+  @Roles(Role.ORGANIZADOR)
+  @UseInterceptors(AnyFilesInterceptor())
+  @ApiOperation({
+    summary: 'Sube fotos JPG/PNG o videos MP4 a un partido FINALIZADO (HU18)',
+  })
+  @ApiCreatedResponse({
+    description: 'Archivos multimedia persistidos atómicamente.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Tipo, firma, extensión o tamaño (>50 MB) inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Acceso exclusivo para el rol Organizador.',
+  })
+  @ApiNotFoundResponse({
+    description: 'El partido solicitado no existe.',
+  })
+  @ApiConflictResponse({
+    description: 'El partido no está FINALIZADO o excede el máximo de 20 archivos.',
+  })
+  async uploadMatchGallery(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFiles()
+    files: Array<{ originalname?: string; mimetype?: string; size?: number; buffer?: Buffer }>,
+  ) {
+    return this.matchesService.uploadMatchGallery(id, files ?? []);
   }
 }
