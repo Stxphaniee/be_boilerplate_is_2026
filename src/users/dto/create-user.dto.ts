@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
-import { IsNormalizedEmail } from '@Common/decorators';
+import { IsNormalizedEmail } from '../../common/decorators/index.js';
 
 export class CreateUserDto {
   @ApiProperty({

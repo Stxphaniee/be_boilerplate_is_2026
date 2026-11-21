@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@Prisma/services';
-import type { Season } from '@PrismaClient';
+import { PrismaService } from '../../prisma/services/index.js';
+import type { Season } from '../../generated/prisma/client.js';
 
 /** Acceso a datos de temporadas (solo lectura por ahora). */
 @Injectable()

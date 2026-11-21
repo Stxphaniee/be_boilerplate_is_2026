@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@PrismaClient';
-import type { EnvConfig } from '@Config';
+import { PrismaClient } from '../../generated/prisma/client.js';
+import type { EnvConfig } from '../../config/index.js';
 
 /**
  * Cliente de Prisma atado al ciclo de vida de Nest.

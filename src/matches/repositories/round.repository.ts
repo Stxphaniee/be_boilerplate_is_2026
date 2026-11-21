@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
-import { PrismaService } from '@Prisma/services';
+import { PrismaService } from '../../prisma/services/index.js';
 
-import { RoundState } from '@PrismaClient';
-import type { Round } from '@PrismaClient';
+import { RoundState } from '../../generated/prisma/client.js';
+import type { Round } from '../../generated/prisma/client.js';
 
 @Injectable()
 export class RoundRepository {

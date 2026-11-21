@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Position, TeamState, type Team, type Player } from '@PrismaClient';
+import { Position, TeamState, type Team, type Player } from '../../generated/prisma/client.js';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PlayerResponseDto {

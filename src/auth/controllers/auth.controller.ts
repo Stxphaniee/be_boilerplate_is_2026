@@ -7,11 +7,11 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { AuthService } from '@Auth/services';
-import { CurrentUser, Public } from '@Auth/decorators';
-import { AuthResponseDto, LoginDto, RefreshTokenDto } from '@Auth/dto';
-import { UserResponseDto } from '@Users/dto';
-import type { User } from '@PrismaClient';
+import { AuthService } from '../services/index.js';
+import { CurrentUser, Public } from '../decorators/index.js';
+import { AuthResponseDto, LoginDto, RefreshTokenDto } from '../dto/index.js';
+import { UserResponseDto } from '../../users/dto/index.js';
+import type { User } from '../../generated/prisma/client.js';
 
 @ApiTags('auth')
 @Controller('auth')

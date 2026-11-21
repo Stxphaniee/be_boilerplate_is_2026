@@ -5,9 +5,9 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Public } from '@Auth/decorators';
-import { UsersService } from '@Users/services';
-import { CreateUserDto, UserResponseDto } from '@Users/dto';
+import { Public } from '../../auth/decorators/index.js';
+import { UsersService } from '../services/index.js';
+import { CreateUserDto, UserResponseDto } from '../dto/index.js';
 
 @ApiTags('users')
 @Controller('users')

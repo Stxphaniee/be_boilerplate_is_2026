@@ -1,7 +1,7 @@
 import { ForbiddenException, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { RolesGuard } from '@Auth/guards';
-import type { Role } from '@PrismaClient';
+import { RolesGuard } from './index.js';
+import type { Role } from '../../generated/prisma/client.js';
 
 function contextFor(user: { role: Role } | undefined): ExecutionContext {
   return {

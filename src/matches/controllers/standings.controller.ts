@@ -11,7 +11,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Public } from '@Auth/decorators';
+import { Public } from '../../auth/decorators/index.js';
 import { StandingsService } from '../services/standings.service.js';
 import { StandingsResponseDto } from '../dto/standings.dto.js';
 

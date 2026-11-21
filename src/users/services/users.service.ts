@@ -1,11 +1,11 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcrypt';
-import { UserRepository } from '@Users/repositories';
-import { EmailAlreadyTakenError } from '@Users/errors';
-import type { CreateUserDto } from '@Users/dto';
-import type { EnvConfig } from '@Config';
-import type { User } from '@PrismaClient';
+import { UserRepository } from '../repositories/index.js';
+import { EmailAlreadyTakenError } from '../errors/index.js';
+import type { CreateUserDto } from '../dto/index.js';
+import type { EnvConfig } from '../../config/index.js';
+import type { User } from '../../generated/prisma/client.js';
 
 /**
  * Lógica de negocio de usuarios.

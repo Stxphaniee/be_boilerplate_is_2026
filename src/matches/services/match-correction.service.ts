@@ -4,8 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '@Prisma/services';
-import { MatchEventType, MatchState } from '@PrismaClient';
+import { PrismaService } from '../../prisma/services/index.js';
+import { MatchEventType, MatchState } from '../../generated/prisma/client.js';
 import { CorregirResultadoDto, MatchCorrectionDetailDto } from '../dto/match-correction.dto.js';
 
 @Injectable()

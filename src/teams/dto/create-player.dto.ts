@@ -11,7 +11,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { Position } from '@PrismaClient';
+import { Position } from '../../generated/prisma/client.js';
 
 const cleanSpaces = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value;

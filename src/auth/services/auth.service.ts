@@ -1,10 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import bcrypt from 'bcrypt';
-import { UsersService } from '@Users/services';
+import { UsersService } from '../../users/services/index.js';
 import { TokenService } from './token.service.js';
-import type { LoginDto } from '@Auth/dto';
-import type { TokenPair } from '@Auth/types';
-import type { User } from '@PrismaClient';
+import type { LoginDto } from '../dto/index.js';
+import type { TokenPair } from '../types/index.js';
+import type { User } from '../../generated/prisma/client.js';
 
 /**
  * Hash descartable con el que se compara cuando el email no existe.

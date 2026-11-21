@@ -1,7 +1,7 @@
 
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@Prisma/services';
-import { MatchEventType, RoundState, Prisma } from '@PrismaClient';
+import { PrismaService } from '../../prisma/services/index.js';
+import { MatchEventType, RoundState, Prisma } from '../../generated/prisma/client.js';
 
 export type MatchResultSummary = Prisma.MatchGetPayload<{
   include: {

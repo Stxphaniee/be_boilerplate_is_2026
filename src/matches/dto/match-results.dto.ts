@@ -1,7 +1,7 @@
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MatchEventType, MatchState } from '@PrismaClient';
-import type { MatchDetail, MatchResultSummary } from '@Matches/repositories';
+import { MatchEventType, MatchState } from '../../generated/prisma/client.js';
+import type { MatchDetail, MatchResultSummary } from '../repositories/index.js';
 
 // =====================================================
 // FUNCIONES AUXILIARES

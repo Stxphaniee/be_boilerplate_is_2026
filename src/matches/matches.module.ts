@@ -6,7 +6,7 @@ import {
   MatchResultsController,
   MatchCorrectionController,
   StandingsController,
-} from '@Matches/controllers';
+} from './controllers/index.js';
 
 import {
   MatchesService,
@@ -14,16 +14,16 @@ import {
   MatchResultsService,
   MatchCorrectionService,
   StandingsService,
-} from '@Matches/services';
+} from './services/index.js';
 
 import {
   MatchRepository,
   RoundRepository,
   MatchLiveRepository,
   MatchResultsRepository,
-} from '@Matches/repositories';
+} from './repositories/index.js';
 
-import { PrismaModule } from '@Prisma';
+import { PrismaModule } from '../prisma/index.js';
 import { TeamsModule } from '../teams/index.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 

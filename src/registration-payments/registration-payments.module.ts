@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '@Prisma';
+import { PrismaModule } from '../prisma/index.js';
 import { RegistrationPaymentsController } from './registration-payments.controller.js';
 import { RegistrationPaymentsService } from './registration-payments.service.js';
 

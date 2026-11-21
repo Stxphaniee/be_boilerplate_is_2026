@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '@Users/services';
+import { UsersService } from '../../users/services/index.js';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 import type { RequestWithUser } from '../decorators/current-user.decorator.js';
-import type { AccessTokenPayload } from '@Auth/types';
+import type { AccessTokenPayload } from '../types/index.js';
 
 /**
  * Guard global: valida el Bearer token y carga el usuario en el request.

@@ -9,9 +9,9 @@ import {
   Role,
   RoundState,
   type User,
-} from '@PrismaClient';
+} from '../../generated/prisma/client.js';
 
-import { MatchLiveRepository } from '@Matches/repositories';
+import { MatchLiveRepository } from '../repositories/index.js';
 
 @Injectable()
 export class MatchRefereePanelService {

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { MatchEventType, MatchState, TeamState } from '@PrismaClient';
-import { PrismaService } from '@Prisma/services';
+import { MatchEventType, MatchState, TeamState } from '../generated/prisma/client.js';
+import { PrismaService } from '../prisma/services/index.js';
 
 const CATEGORY_MAP: Record<string, MatchEventType> = {
   goles: MatchEventType.GOL,

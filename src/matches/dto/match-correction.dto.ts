@@ -13,7 +13,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { MatchEventType } from '@PrismaClient';
+import { MatchEventType } from '../../generated/prisma/client.js';
 
 export class EventoCorregidoDto {
   @ApiProperty({ description: 'ID del jugador', example: 'd3b07384-d113-4672-887e-dc250f223f03' })

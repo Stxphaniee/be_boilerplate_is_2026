@@ -11,8 +11,8 @@ import {
   PaymentState,
   TeamState,
   type User,
-} from '@PrismaClient';
-import { PrismaService } from '@Prisma/services';
+} from '../generated/prisma/client.js';
+import { PrismaService } from '../prisma/services/index.js';
 
 export interface SuspensionBody {
   accion?: 'SUSPENDER' | 'REACTIVAR';

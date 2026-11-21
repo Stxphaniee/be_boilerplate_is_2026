@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '@Prisma';
+import { PrismaModule } from '../prisma/index.js';
 import { RankingController } from './ranking.controller.js';
 import { RankingService } from './ranking.service.js';
 

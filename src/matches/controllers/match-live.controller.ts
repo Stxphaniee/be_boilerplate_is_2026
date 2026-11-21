@@ -21,8 +21,8 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-import { CurrentUser, Public, Roles } from '@Auth/decorators';
-import { MatchLiveService } from '@Matches/services';
+import { CurrentUser, Public, Roles } from '../../auth/decorators/index.js';
+import { MatchLiveService } from '../services/index.js';
 
 import {
   CreateMatchEventDto,
@@ -33,9 +33,9 @@ import {
   RefereeMatchResponseDto,
   RegisterMatchParticipantsDto,
   UpdateMatchStateDto,
-} from '@Matches/dto';
+} from '../dto/index.js';
 
-import { Role, type User } from '@PrismaClient';
+import { Role, type User } from '../../generated/prisma/client.js';
 
 @ApiTags('matches-live')
 @ApiBearerAuth()

@@ -15,14 +15,14 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-import { MatchEventType, MatchState } from '@PrismaClient';
-import type { Match, MatchParticipation } from '@PrismaClient';
+import { MatchEventType, MatchState } from '../../generated/prisma/client.js';
+import type { Match, MatchParticipation } from '../../generated/prisma/client.js';
 
 import type {
   MatchEventWithPlayer,
   MatchScoreboardData,
   RefereeMatchData,
-} from '@Matches/repositories';
+} from '../repositories/index.js';
 
 // =====================================================
 // ACTUALIZACIÓN DEL ESTADO

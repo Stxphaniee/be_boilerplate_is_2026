@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Prisma } from '@PrismaClient';
+import { Prisma } from '../../generated/prisma/client.js';
 import { NotificacionService } from './notificacion.service.js';
 import { NotificationsService } from './notifications.service.js';
 

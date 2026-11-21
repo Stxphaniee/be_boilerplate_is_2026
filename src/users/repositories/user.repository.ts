@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@Prisma/services';
-import { EmailAlreadyTakenError } from '@Users/errors';
-import { Prisma, type User } from '@PrismaClient';
+import { PrismaService } from '../../prisma/services/index.js';
+import { EmailAlreadyTakenError } from '../errors/index.js';
+import { Prisma, type User } from '../../generated/prisma/client.js';
 
 /** Código de Prisma para violación de restricción única. */
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';

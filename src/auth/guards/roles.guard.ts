@@ -7,7 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator.js';
 import type { RequestWithUser } from '../decorators/current-user.decorator.js';
-import type { Role } from '@PrismaClient';
+import type { Role } from '../../generated/prisma/client.js';
 
 /**
  * Guard global de autorización por rol (403 si el rol no corresponde).

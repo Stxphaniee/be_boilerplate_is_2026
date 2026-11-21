@@ -9,13 +9,13 @@ import {
 
 import { NotificationsService } from '../../notifications/services/notifications.service.js';
 
-import { MatchLiveRepository } from '@Matches/repositories';
+import { MatchLiveRepository } from '../repositories/index.js';
 
 import type {
   MatchEventWithPlayer,
   MatchScoreboardData,
   RefereeMatchData,
-} from '@Matches/repositories';
+} from '../repositories/index.js';
 
 import {
   MatchEventType,
@@ -23,13 +23,13 @@ import {
   RoundState,
   type Match,
   type User,
-} from '@PrismaClient';
+} from '../../generated/prisma/client.js';
 
 import type {
   CreateMatchEventDto,
   RegisterMatchParticipantsDto,
   UpdateMatchStateDto,
-} from '@Matches/dto';
+} from '../dto/index.js';
 
 @Injectable()
 export class MatchLiveService {

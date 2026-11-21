@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@Prisma/services';
-import { Court, MatchState, Prisma, RoundState } from '@PrismaClient';
-import type { Match } from '@PrismaClient';
+import { PrismaService } from '../../prisma/services/index.js';
+import { Court, MatchState, Prisma, RoundState } from '../../generated/prisma/client.js';
+import type { Match } from '../../generated/prisma/client.js';
 
 export interface CreateMatchData {
   roundId: string;

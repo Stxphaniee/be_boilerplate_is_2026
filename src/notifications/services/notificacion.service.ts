@@ -1,12 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
-import { PrismaService } from '@Prisma/services';
+import { PrismaService } from '../../prisma/services/index.js';
 import {
   NotificationCategory,
   NotificationSourceModule,
   Prisma,
-} from '@PrismaClient';
-import type { Notification } from '@PrismaClient';
+} from '../../generated/prisma/client.js';
+import type { Notification } from '../../generated/prisma/client.js';
 
 export interface CrearAvisoInput {
   destinatarioId: string;

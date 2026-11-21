@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 
-import { TeamsController } from '@Teams/controllers';
-import { TeamsService } from '@Teams/services';
+import { TeamsController } from './controllers/index.js';
+import { TeamsService } from './services/index.js';
 import {
   SeasonRepository,
   TeamRepository,
-} from '@Teams/repositories';
+} from './repositories/index.js';
 
 import { PaymentsModule } from '../payments/payments.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';

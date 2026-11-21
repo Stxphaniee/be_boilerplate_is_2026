@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
-import type { EnvConfig } from '@Config';
+import type { EnvConfig } from './config/index.js';
 
 const API_PREFIX = 'api/v1';
 

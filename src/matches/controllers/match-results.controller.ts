@@ -9,12 +9,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { Public } from '@Auth/decorators';
-import { MatchResultsService } from '@Matches/services';
+import { Public } from '../../auth/decorators/index.js';
+import { MatchResultsService } from '../services/index.js';
 import {
   MatchDetailResponseDto,
   MatchResultItemDto,
-} from '@Matches/dto';
+} from '../dto/index.js';
 
 @ApiTags('results')
 @Controller()

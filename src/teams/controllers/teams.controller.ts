@@ -22,9 +22,9 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-import { CurrentUser, Roles } from '@Auth/decorators';
+import { CurrentUser, Roles } from '../../auth/decorators/index.js';
 
-import { TeamsService } from '@Teams/services';
+import { TeamsService } from '../services/index.js';
 
 import {
   AddPlayerDto,
@@ -33,9 +33,9 @@ import {
   TeamResponseDto,
   UpdateTeamStatusDto,
   ResubmitTeamDto,
-} from '@Teams/dto';
+} from '../dto/index.js';
 
-import { Role, type User } from '@PrismaClient';
+import { Role, type User } from '../../generated/prisma/client.js';
 
 @ApiTags('teams')
 @ApiBearerAuth()

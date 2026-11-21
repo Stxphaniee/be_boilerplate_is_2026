@@ -2,10 +2,10 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'node:crypto';
-import { RefreshTokenRepository } from '@Auth/repositories';
-import type { AccessTokenPayload, TokenPair } from '@Auth/types';
-import type { EnvConfig } from '@Config';
-import type { User } from '@PrismaClient';
+import { RefreshTokenRepository } from '../repositories/index.js';
+import type { AccessTokenPayload, TokenPair } from '../types/index.js';
+import type { EnvConfig } from '../../config/index.js';
+import type { User } from '../../generated/prisma/client.js';
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const REFRESH_TOKEN_BYTES = 32;

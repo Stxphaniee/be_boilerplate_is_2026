@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { Match, Round } from '@PrismaClient';
+import type { Match, Round } from '../../generated/prisma/client.js';
 
 export class RoundResponseDto {
   @ApiProperty({ format: 'uuid' })

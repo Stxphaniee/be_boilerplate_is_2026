@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { MatchEventType, MatchState, TeamState } from '@PrismaClient';
+import { MatchEventType, MatchState, TeamState } from '../../generated/prisma/client.js';
 import { StandingsService } from './standings.service.js';
 
 describe('StandingsService (HU10)', () => {

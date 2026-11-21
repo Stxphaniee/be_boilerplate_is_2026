@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { MatchEventType, MatchState, type User } from '@PrismaClient';
-import { PrismaService } from '@Prisma/services';
+import { MatchEventType, MatchState, type User } from '../generated/prisma/client.js';
+import { PrismaService } from '../prisma/services/index.js';
 
 @Injectable()
 export class PlayerStatsService {

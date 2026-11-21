@@ -15,8 +15,8 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-import { CurrentUser, Roles } from '@Auth/decorators';
-import { Role, type User } from '@PrismaClient';
+import { CurrentUser, Roles } from '../../auth/decorators/index.js';
+import { Role, type User } from '../../generated/prisma/client.js';
 
 import {
   MatchRefereePanelService,

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsEnum, IsUUID } from 'class-validator';
-import { Court } from '@PrismaClient';
+import { Court } from '../../generated/prisma/client.js';
 
 export class CreateMatchDto {
   @ApiProperty({ format: 'uuid' })

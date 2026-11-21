@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { MatchCalendarData } from '@Matches/repositories';
+import type { MatchCalendarData } from '../repositories/index.js';
 
 export class MatchCalendarTeamDto {
   @ApiProperty({ format: 'uuid' })

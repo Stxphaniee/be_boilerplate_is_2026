@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { SeasonRepository, TeamRepository } from '@Teams/repositories';
+import { SeasonRepository, TeamRepository } from '../repositories/index.js';
 
 import {
   CaptainAlreadyHasTeamError,
@@ -16,18 +16,18 @@ import {
   RosterTooSmallError,
   PlayerDuplicateDuiError,
   JerseyNumberTakenError,
-} from '@Teams/errors';
+} from '../errors/index.js';
 
 import type {
   CreateTeamDto,
   ResubmitTeamDto,
   UpdateTeamStatusDto,
   AddPlayerDto,
-} from '@Teams/dto';
+} from '../dto/index.js';
 
-import { TeamState, type Season, type User, type Player } from '@PrismaClient';
+import { TeamState, type Season, type User, type Player } from '../../generated/prisma/client.js';
 
-import type { TeamWithPlayers, TeamWithReviewData } from '@Teams/repositories';
+import type { TeamWithPlayers, TeamWithReviewData } from '../repositories/index.js';
 
 import { PaymentsService } from '../../payments/services/payments.service.js';
 import { NotificationsService } from '../../notifications/services/notifications.service.js';

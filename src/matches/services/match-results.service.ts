@@ -1,10 +1,10 @@
 
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { MatchResultsRepository } from '@Matches/repositories';
+import { MatchResultsRepository } from '../repositories/index.js';
 import type {
   MatchDetail,
   MatchResultSummary,
-} from '@Matches/repositories';
+} from '../repositories/index.js';
 
 @Injectable()
 export class MatchResultsService {

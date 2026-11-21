@@ -2,7 +2,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsString, Length, ValidateIf } from 'class-validator';
-import { TeamState } from '@PrismaClient';
+import { TeamState } from '../../generated/prisma/client.js';
 
 const cleanSpaces = ({ value }: { value: unknown }) =>
   typeof value === 'string'

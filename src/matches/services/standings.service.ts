@@ -3,8 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '@Prisma/services';
-import { MatchEventType, MatchState, TeamState } from '@PrismaClient';
+import { PrismaService } from '../../prisma/services/index.js';
+import { MatchEventType, MatchState, TeamState } from '../../generated/prisma/client.js';
 import {
   StandingsResponseDto,
   TablaPosicionesItemDto,

@@ -3,8 +3,8 @@ import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
-import { CreateTeamDto } from '@Teams/dto';
-import { Position } from '@PrismaClient';
+import { CreateTeamDto } from './index.js';
+import { Position } from '../../generated/prisma/client.js';
 
 // Plantilla válida para las pruebas de CreateTeamDto.
 const validPlayers = [

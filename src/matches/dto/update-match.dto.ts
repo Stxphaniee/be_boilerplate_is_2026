@@ -8,7 +8,7 @@ import {
   Length,
 } from 'class-validator';
 
-import { Court } from '@PrismaClient';
+import { Court } from '../../generated/prisma/client.js';
 
 export enum UpdateMatchAction {
   PROGRAMADO = 'PROGRAMADO',

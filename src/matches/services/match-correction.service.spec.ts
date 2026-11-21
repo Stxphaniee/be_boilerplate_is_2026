@@ -4,7 +4,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { MatchEventType, MatchState } from '@PrismaClient';
+import { MatchEventType, MatchState } from '../../generated/prisma/client.js';
 import { MatchCorrectionService } from './match-correction.service.js';
 
 describe('MatchCorrectionService (HU9)', () => {

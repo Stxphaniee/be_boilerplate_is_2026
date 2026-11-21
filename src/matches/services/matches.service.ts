@@ -6,19 +6,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { RoundRepository, MatchRepository } from '@Matches/repositories';
-import type { MatchCalendarData } from '@Matches/repositories';
-import { SeasonRepository, TeamRepository } from '@Teams/repositories';
-import { PrismaService } from '@Prisma/services';
+import { RoundRepository, MatchRepository } from '../repositories/index.js';
+import type { MatchCalendarData } from '../repositories/index.js';
+import { SeasonRepository, TeamRepository } from '../../teams/repositories/index.js';
+import { PrismaService } from '../../prisma/services/index.js';
 import { NotificationsService } from '../../notifications/services/notifications.service.js';
 
 import type {
   CreateMatchDto,
   CreateRoundDto,
   UpdateMatchDto,
-} from '@Matches/dto';
+} from '../dto/index.js';
 
-import { UpdateMatchAction } from '@Matches/dto';
+import { UpdateMatchAction } from '../dto/index.js';
 
 import {
   Court,
@@ -27,9 +27,9 @@ import {
   RoundState,
   TeamState,
   PaymentState,
-} from '@PrismaClient';
+} from '../../generated/prisma/client.js';
 
-import type { Match, Round, User, Team } from '@PrismaClient';
+import type { Match, Round, User, Team } from '../../generated/prisma/client.js';
 
 const MATCH_DURATION_MINUTES = 90;
 

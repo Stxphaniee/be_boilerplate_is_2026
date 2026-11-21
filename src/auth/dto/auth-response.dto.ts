@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserResponseDto } from '@Users/dto';
-import type { User } from '@PrismaClient';
-import type { TokenPair } from '@Auth/types';
+import { UserResponseDto } from '../../users/dto/index.js';
+import type { User } from '../../generated/prisma/client.js';
+import type { TokenPair } from '../types/index.js';
 
 export class AuthResponseDto {
   @ApiProperty({ description: 'JWT de acceso, para el header Authorization: Bearer.' })

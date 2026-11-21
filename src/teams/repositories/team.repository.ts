@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '@Prisma/services';
+import { PrismaService } from '../../prisma/services/index.js';
 import {
   CaptainAlreadyHasTeamError,
   TeamNameTakenError,
@@ -8,9 +8,9 @@ import {
   JerseyNumberTakenError,
   RosterFullError,
   RosterTooSmallError,
-} from '@Teams/errors';
-import { Prisma, Position, TeamState, PaymentState } from '@PrismaClient';
-import type { Player } from '@PrismaClient';
+} from '../errors/index.js';
+import { Prisma, Position, TeamState, PaymentState } from '../../generated/prisma/client.js';
+import type { Player } from '../../generated/prisma/client.js';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 

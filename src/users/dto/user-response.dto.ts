@@ -1,7 +1,7 @@
 
 import { ApiProperty } from '@nestjs/swagger';
-import { Role } from '@PrismaClient';
-import type { User } from '@PrismaClient';
+import { Role } from '../../generated/prisma/client.js';
+import type { User } from '../../generated/prisma/client.js';
 
 /**
  * Forma pública de un usuario.

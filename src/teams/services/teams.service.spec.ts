@@ -4,17 +4,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { TeamsService } from '@Teams/services';
-import { SeasonRepository, TeamRepository } from '@Teams/repositories';
+import { TeamsService } from './index.js';
+import { SeasonRepository, TeamRepository } from '../repositories/index.js';
 
 import {
   CaptainAlreadyHasTeamError,
   TeamNameTakenError,
   TeamShortNameTakenError,
-} from '@Teams/errors';
+} from '../errors/index.js';
 
-import type { Season, Team, User } from '@PrismaClient';
-import { Position, TeamState } from '@PrismaClient';
+import type { Season, Team, User } from '../../generated/prisma/client.js';
+import { Position, TeamState } from '../../generated/prisma/client.js';
 
 import type { PaymentsService } from '../../payments/services/payments.service.js';
 import type { NotificationsService } from '../../notifications/services/notifications.service.js';
