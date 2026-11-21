@@ -1,0 +1,21 @@
+ENTREGA FINAL — PROYECTO 5 — TRES TRISTES TIGRES
+Ingeniería de Software · Sección 01 · Ciclo 02/2026
+
+a) REPOSITORIOS
+Backend: https://github.com/Stxphaniee/be_boilerplate_is_2026
+Frontend: https://github.com/Stxphaniee/fe_boilerplate_is_2026
+
+b) DESPLIEGUE
+Frontend: https://<DOMINIO-FRONTEND-REAL>.vercel.app
+Documentación API (Swagger): https://liga-futbol-backend.vercel.app/api/docs
+
+c) USUARIOS DE PRUEBA
+Organizador: <USUARIO> / <CONTRASEÑA>
+Árbitro: <USUARIO> / <CONTRASEÑA>
+Capitán: <USUARIO> / <CONTRASEÑA>
+Jugador: <USUARIO> / <CONTRASEÑA>
+
+d) HISTORIAS PENDIENTES
+<Ninguna, solo si todas las historias fueron verificadas en el despliegue. En caso contrario, enumerar las historias pendientes y el motivo.>
+
+IMPORTANTE: este archivo es una plantilla de trabajo para Moodle. Completar las credenciales reales de evaluación y pegar el texto en Moodle; NO subir este archivo al repositorio GitHub.

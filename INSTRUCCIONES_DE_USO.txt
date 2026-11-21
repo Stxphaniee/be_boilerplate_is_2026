@@ -1,0 +1,25 @@
+DOCUMENTACIÓN FINAL — LIGA AMATEUR / TRES TRISTES TIGRES
+
+CONTENIDO DEL PAQUETE
+- backend/README.md
+- backend/docs/01-guia-de-uso.md hasta docs/09-problemas-conocidos.md
+- frontend/README.md
+- ENTREGA_MOODLE.txt (plantilla para copiar a Moodle; no subir a GitHub)
+- Este archivo de instrucciones (no subir a GitHub)
+
+CÓMO INCORPORAR
+1. Abrir el repositorio backend `be_boilerplate_is_2026`.
+2. Copiar `backend/README.md` a la raíz del backend como `README.md`.
+3. Copiar la carpeta `backend/docs/` a la raíz del backend.
+4. Abrir el repositorio frontend `fe_boilerplate_is_2026`.
+5. Copiar `frontend/README.md` a la raíz del frontend como `README.md`.
+6. Revisar los valores marcados con `<...>` y reemplazarlos solo con URLs reales confirmadas.
+7. Agregar capturas reales en `backend/docs/assets/` y enlazarlas en `01-guia-de-uso.md`.
+8. Verificar PR, tarjetas Trello, release `v1.0.0`, usuarios de prueba y funcionamiento de producción.
+
+IMPORTANTE
+- No subir `.env`, `.env.local`, contraseñas ni cadenas de conexión.
+- Las credenciales de prueba se entregan en Moodle, nunca en el repositorio.
+- La plantilla de plan de pruebas ejecutado es un entregable separado y no está incluida en este paquete.
+- La URL de frontend no se pudo recuperar de forma verificable; no se inventa.
+- El dominio de backend asignado es `https://liga-futbol-backend.vercel.app`; confirmar que responde antes de entregar.
