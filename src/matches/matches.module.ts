@@ -5,6 +5,7 @@ import {
   MatchLiveController,
   MatchResultsController,
   MatchCorrectionController,
+  StandingsController,
 } from '@Matches/controllers';
 
 import {
@@ -12,6 +13,7 @@ import {
   MatchLiveService,
   MatchResultsService,
   MatchCorrectionService,
+  StandingsService,
 } from '@Matches/services';
 
 import {
@@ -46,6 +48,7 @@ import {
     MatchResultsController,
     MatchRefereePanelController,
     MatchCorrectionController,
+    StandingsController,
   ],
 
   providers: [
@@ -54,6 +57,7 @@ import {
     MatchResultsService,
     MatchRefereePanelService,
     MatchCorrectionService,
+    StandingsService,
     MatchRepository,
     MatchLiveRepository,
     MatchResultsRepository,
@@ -65,6 +69,7 @@ import {
     MatchLiveService,
     MatchResultsService,
     MatchCorrectionService,
+    StandingsService,
     MatchRepository,
     MatchLiveRepository,
     MatchResultsRepository,

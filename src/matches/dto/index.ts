@@ -6,3 +6,4 @@ export * from './match-calendar-response.dto.js';
 export * from './match-live.dto.js';
 export * from './match-results.dto.js';
 export * from './match-correction.dto.js';
+export * from './standings.dto.js';
