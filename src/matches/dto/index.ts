@@ -5,3 +5,4 @@ export * from './match-response.dto.js';
 export * from './match-calendar-response.dto.js';
 export * from './match-live.dto.js';
 export * from './match-results.dto.js';
+export * from './gallery-image.dto.js';

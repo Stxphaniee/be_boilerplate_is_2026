@@ -31,6 +31,7 @@ import {
   MatchResponseDto,
   RoundResponseDto,
   UpdateMatchDto,
+  GalleryImageDto,
 } from '@Matches/dto';
 
 import { Role, type User } from '@PrismaClient';

@@ -90,7 +90,8 @@ model User {
   notifications Notification[]
   refereedMatches Match[] @relation("RefereeMatches")
 
-  @@map("users")
+  preferenciasPreferenciaNotificacion PreferenciaNotificacion[]
+
 }
 
 // ==========================================
@@ -276,6 +277,16 @@ model Notification {
   @@map("notifications")
 }
 
+model PreferenciaNotificacion {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoria NotificationCategory @default(INSCRIPCIONES)
+  activa    Boolean @default(true)
+  @@unique([userId, categoria])
+  @@map("preferencias_notificacion")
+}
+
 // ==========================================
 // ENUMS - PARTIDOS
 // ==========================================
@@ -367,6 +378,7 @@ model Match {
   @@index([startsAt])
   @@index([state])
   @@map("matches")
+  galleryImages GalleryImage[]
 }
 
 // ==========================================
