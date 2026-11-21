@@ -1,3 +1,4 @@
+import { PlayerStatsModule } from './player-stats/player-stats.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -24,6 +25,7 @@ import { MatchesModule } from '@Matches';
     AuthModule,
     TeamsModule,
     MatchesModule,
+    PlayerStatsModule,
   ],
   providers: [
     {
