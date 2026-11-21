@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@Prisma/services';
 import {
@@ -60,7 +60,21 @@ export class NotificacionService {
     }
 
     try {
-      return await this.prisma.notification.create({
+      if (!input.esCritica && this.prisma.preferenciaNotificacion) {
+      const pref = await this.prisma.preferenciaNotificacion.findUnique({
+        where: {
+          userId_categoria: {
+            userId: input.destinatarioId,
+            categoria: input.categoria,
+          },
+        },
+      });
+      if (pref && pref.activa === false) {
+        return null;
+      }
+    }
+
+    return await this.prisma.notification.create({
         data: this.toData(input),
       });
     } catch (error) {
