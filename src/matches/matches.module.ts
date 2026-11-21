@@ -5,12 +5,14 @@ import {
   MatchesController,
   MatchLiveController,
   MatchResultsController,
+  StandingsController,
 } from '@Matches/controllers';
 
 import {
   MatchLiveService,
   MatchesService,
   MatchResultsService,
+  StandingsService,
 } from '@Matches/services';
 
 import {
@@ -34,11 +36,13 @@ import { NotificationsModule } from '../notifications/notifications.module.js';
     MatchesController,
     MatchLiveController,
     MatchResultsController,
+    StandingsController,
   ],
   providers: [
     MatchesService,
     MatchLiveService,
     MatchResultsService,
+    StandingsService,
     MatchRepository,
     MatchLiveRepository,
     MatchResultsRepository,
@@ -48,6 +52,7 @@ import { NotificationsModule } from '../notifications/notifications.module.js';
     MatchesService,
     MatchLiveService,
     MatchResultsService,
+    StandingsService,
     MatchRepository,
     MatchLiveRepository,
     MatchResultsRepository,
