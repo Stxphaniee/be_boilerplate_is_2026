@@ -1,9 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
+ feature/HU11-Tabla-Posiciones
+import { ForbiddenException } from '@nestjs/common';
+import { MatchEventType, MatchState, TeamState } from '@PrismaClient';
+import { StandingsService } from './standings.service.js';
+
+describe('StandingsService (HU11)', () => {
+
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { MatchEventType, MatchState, TeamState } from '@PrismaClient';
 import { StandingsService } from './standings.service.js';
 
 describe('StandingsService (HU10)', () => {
+develop
   const seasonId = 'season-uuid-2026';
 
   const mockSeason = {
@@ -33,6 +41,9 @@ describe('StandingsService (HU10)', () => {
     name: 'Leones del Sur',
     shortName: 'LEO',
     status: TeamState.APROBADO,
+ feature/HU11-Tabla-Posiciones
+    players: [{ id: 'p5' }],
+
     players: [{ id: 'p5' }, { id: 'p6' }],
   };
 
@@ -42,6 +53,7 @@ describe('StandingsService (HU10)', () => {
     shortName: 'AGU',
     status: TeamState.APROBADO,
     players: [{ id: 'p7' }],
+ develop
   };
 
   const createService = (overrides?: any) => {
@@ -50,7 +62,11 @@ describe('StandingsService (HU10)', () => {
         findFirst: vi.fn().mockResolvedValue(mockSeason),
       },
       team: {
+feature/HU11-Tabla-Posiciones
+        findMany: vi.fn().mockResolvedValue([team1, team2, team3]),
+
         findMany: vi.fn().mockResolvedValue([team1, team2, team3, team4]),
+develop
       },
       match: {
         findMany: vi.fn().mockResolvedValue([]),
@@ -61,6 +77,10 @@ describe('StandingsService (HU10)', () => {
     const service = new StandingsService(prisma);
     return { service, prisma };
   };
+
+feature/HU11-Tabla-Posiciones
+  it('retorna la tabla de posiciones con métricas oficiales calculadas', async () => {
+    const matches = [
 
   it('inicializa todos los equipos aprobados en 0 si no hay partidos jugados', async () => {
     const { service } = createService();
@@ -85,6 +105,7 @@ describe('StandingsService (HU10)', () => {
   it('calcula victorias (3 pts), empates (1 pt), derrotas y diferencia de goles', async () => {
     const matches = [
       // Halcones (team1) 2 - 1 Atlético Central (team2)
+develop
       {
         id: 'm1',
         homeTeamId: team1.id,
@@ -96,6 +117,8 @@ describe('StandingsService (HU10)', () => {
           { playerId: 'p3', type: MatchEventType.GOL },
         ],
       },
+ feature/HU11-Tabla-Posiciones
+
       // Leones (team3) 1 - 1 Halcones (team1)
       {
         id: 'm2',
@@ -156,6 +179,7 @@ describe('StandingsService (HU10)', () => {
           { playerId: 'p6', type: MatchEventType.GOL },
         ], // Atlético 2 - 1 Leones -> Atlético: 3 pts, DG +1, GF 2
       },
+develop
     ];
 
     const { service } = createService({
@@ -166,6 +190,20 @@ describe('StandingsService (HU10)', () => {
 
     const result = await service.calculateStandings();
 
+ feature/HU11-Tabla-Posiciones
+    expect(result.lider).toBe('Los Halcones FC');
+    expect(result.partidosFinalizados).toBe(1);
+    expect(result.posiciones[0].posicion).toBe(1);
+    expect(result.posiciones[0].pts).toBe(3);
+    expect(result.posiciones[1].posicion).toBe(2);
+    expect(result.posiciones[1].pts).toBe(0);
+    // Equipo 3 sin partidos jugados con 0 pts
+    expect(result.posiciones[2].pj).toBe(0);
+    expect(result.posiciones[2].pts).toBe(0);
+  });
+
+  it('impide manipulación manual de la tabla con 403', () => {
+
     // Posición 1 y 2 tienen 3 puntos, DG +1, GF 2.
     // Alfabéticamente "Atlético Central" va primero que "Los Halcones FC".
     expect(result.posiciones[0].nombre).toBe('Atlético Central');
@@ -173,6 +211,7 @@ describe('StandingsService (HU10)', () => {
   });
 
   it('lanza 403 Forbidden al intentar manipular manualmente puntos de la tabla', () => {
+develop
     const { service } = createService();
     expect(() => service.rejectManualUpdate()).toThrow(ForbiddenException);
   });

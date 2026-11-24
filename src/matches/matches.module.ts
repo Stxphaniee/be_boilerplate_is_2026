@@ -4,7 +4,10 @@ import {
   MatchesController,
   MatchLiveController,
   MatchResultsController,
+ feature/HU11-Tabla-Posiciones
+
   MatchCorrectionController,
+ develop
   StandingsController,
 } from '@Matches/controllers';
 
@@ -12,7 +15,10 @@ import {
   MatchesService,
   MatchLiveService,
   MatchResultsService,
+ feature/HU11-Tabla-Posiciones
+
   MatchCorrectionService,
+develop
   StandingsService,
 } from '@Matches/services';
 
@@ -46,8 +52,11 @@ import {
     MatchesController,
     MatchLiveController,
     MatchResultsController,
+ feature/HU11-Tabla-Posiciones
+
     MatchRefereePanelController,
     MatchCorrectionController,
+ develop
     StandingsController,
   ],
 
@@ -55,8 +64,11 @@ import {
     MatchesService,
     MatchLiveService,
     MatchResultsService,
+ feature/HU11-Tabla-Posiciones
+
     MatchRefereePanelService,
     MatchCorrectionService,
+ develop
     StandingsService,
     MatchRepository,
     MatchLiveRepository,
@@ -68,7 +80,10 @@ import {
     MatchesService,
     MatchLiveService,
     MatchResultsService,
+ feature/HU11-Tabla-Posiciones
+
     MatchCorrectionService,
+ develop
     StandingsService,
     MatchRepository,
     MatchLiveRepository,

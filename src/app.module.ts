@@ -1,7 +1,11 @@
+ feature/HU11-Tabla-Posiciones
+import { MatchCorrectionsModule } from './match-corrections/match-corrections.module.js';
+
 import { PlayerStatsModule } from './player-stats/player-stats.module.js';
 import { RankingModule } from './ranking/ranking.module.js';
 import { RegistrationPaymentsModule } from './registration-payments/registration-payments.module.js';
 import { AdminPaymentsModule } from './admin-payments/admin-payments.module.js';
+ develop
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -30,12 +34,16 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     AuthModule,
     TeamsModule,
     MatchesModule,
+ feature/HU11-Tabla-Posiciones
+    MatchCorrectionsModule,
+
     ReportsModule,
     NotificationsModule,
     PlayerStatsModule,
     RankingModule,
     RegistrationPaymentsModule,
     AdminPaymentsModule,
+ develop
   ],
   providers: [
     {
