@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@Prisma/services';
 import {
@@ -19,6 +19,11 @@ export interface CrearAvisoInput {
   eventoId: string;
   esCritica?: boolean;
 }
+
+/** Firma de la rama HU20 sin alterar las llamadas previas de HU17. */
+export type CrearAvisoMasivoInput = Omit<CrearAvisoInput, 'destinatarioId'> & {
+  destinatarios: string[];
+};
 
 const TITULO_MAX = 100;
 const MENSAJE_MAX = 500;
@@ -48,8 +53,28 @@ export class NotificacionService {
       throw new NotFoundException('El destinatario del aviso no existe.');
     }
 
+    // HU20: las preferencias futuras de HU21 solo bloquean avisos no criticos.
+    const esCritica = input.esCritica ?? false;
+    if (!esCritica && !(await this.categoriaActiva(input.destinatarioId, input.categoria))) {
+      return null;
+    }
+
     try {
-      return await this.prisma.notification.create({
+      if (!input.esCritica && this.prisma.preferenciaNotificacion) {
+      const pref = await this.prisma.preferenciaNotificacion.findUnique({
+        where: {
+          userId_categoria: {
+            userId: input.destinatarioId,
+            categoria: input.categoria,
+          },
+        },
+      });
+      if (pref && pref.activa === false) {
+        return null;
+      }
+    }
+
+    return await this.prisma.notification.create({
         data: this.toData(input),
       });
     } catch (error) {
@@ -64,18 +89,45 @@ export class NotificacionService {
    * Emite el mismo aviso a varios destinatarios, deduplicando usuarios que
    * ocupan más de un rol. Devuelve cuántos avisos se crearon realmente.
    */
+  /** Contrato HU17: lista de IDs y payload -> total creado. */
   async crearAvisos(
     destinatarioIds: Iterable<string>,
     base: Omit<CrearAvisoInput, 'destinatarioId'>,
-  ): Promise<number> {
-    let creados = 0;
+  ): Promise<number>;
+  /** Contrato HU20: objeto con destinatarios -> avisos creados. */
+  async crearAvisos(input: CrearAvisoMasivoInput): Promise<Notification[]>;
+  async crearAvisos(
+    idsOrInput: Iterable<string> | CrearAvisoMasivoInput,
+    base?: Omit<CrearAvisoInput, 'destinatarioId'>,
+  ): Promise<number | Notification[]> {
+    const masivo = idsOrInput as CrearAvisoMasivoInput;
+    if (Array.isArray(masivo.destinatarios)) {
+      const { destinatarios, ...rest } = masivo;
+      const creados: Notification[] = [];
+      for (const destinatarioId of new Set(destinatarios.filter(Boolean))) {
+        const aviso = await this.crearAviso({ ...rest, destinatarioId });
+        if (aviso) creados.push(aviso);
+      }
+      return creados;
+    }
 
-    for (const destinatarioId of new Set(destinatarioIds)) {
+    if (!base) {
+      throw new BadRequestException('Datos base del aviso requeridos.');
+    }
+    let creados = 0;
+    for (const destinatarioId of new Set(idsOrInput as Iterable<string>)) {
       const aviso = await this.crearAviso({ ...base, destinatarioId });
       if (aviso) creados += 1;
     }
-
     return creados;
+  }
+
+  /** Extension para HU21; HU20 sin preferencias configuradas deja pasar avisos. */
+  protected async categoriaActiva(
+    _usuarioId: string,
+    _categoria: NotificationCategory,
+  ): Promise<boolean> {
+    return true;
   }
 
   private toData(

@@ -95,6 +95,10 @@ export class StandingsService {
       const homeStats = statsMap.get(match.homeTeamId);
       const awayStats = statsMap.get(match.awayTeamId);
 
+ feature/HU11-Tabla-Posiciones
+
+      // Si alguno de los equipos no está aprobado (e.g. suspendido posteriormente), no se altera
+ develop
       if (!homeStats || !awayStats) continue;
 
       const homePlayers = teamPlayersMap.get(match.homeTeamId);
@@ -131,6 +135,10 @@ export class StandingsService {
       }
     }
 
+ feature/HU11-Tabla-Posiciones
+
+    // Formatear items con Pts y DG
+develop
     const items: Array<Omit<TablaPosicionesItemDto, 'posicion'>> = Array.from(
       statsMap.values(),
     ).map((st) => {
@@ -151,7 +159,11 @@ export class StandingsService {
       };
     });
 
+feature/HU11-Tabla-Posiciones
     // Criterios de desempate:
+
+    // Ordenamiento estricto por criterios de desempate:
+develop
     // 1° Mayor cantidad de Puntos
     // 2° Mayor Diferencia de Goles
     // 3° Mayor cantidad de Goles a Favor
@@ -179,6 +191,10 @@ export class StandingsService {
     };
   }
 
+feature/HU11-Tabla-Posiciones
+
+  // Regla negativa: No se admiten cambios directos de puntos o estadísticas
+ develop
   rejectManualUpdate(): never {
     throw new ForbiddenException(
       'No se permite alterar o manipular manualmente los puntos o valores de la tabla omitiendo los resultados oficiales (403).',
