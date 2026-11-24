@@ -1,3 +1,6 @@
+feature/HU10-Calculo-Automatico-Posiciones
+import { StandingsModule } from './standings/standings.module.js';
+
  feature/HU11-Tabla-Posiciones
 import { MatchCorrectionsModule } from './match-corrections/match-corrections.module.js';
 
@@ -6,6 +9,7 @@ import { RankingModule } from './ranking/ranking.module.js';
 import { RegistrationPaymentsModule } from './registration-payments/registration-payments.module.js';
 import { AdminPaymentsModule } from './admin-payments/admin-payments.module.js';
  develop
+} develop
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -34,6 +38,10 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     AuthModule,
     TeamsModule,
     MatchesModule,
+
+    feature/HU10-Calculo-Automatico-Posiciones
+    StandingsModule,
+
  feature/HU11-Tabla-Posiciones
     MatchCorrectionsModule,
 
@@ -43,6 +51,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     RankingModule,
     RegistrationPaymentsModule,
     AdminPaymentsModule,
+ develop
  develop
   ],
   providers: [

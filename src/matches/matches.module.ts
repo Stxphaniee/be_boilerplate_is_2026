@@ -52,24 +52,38 @@ import {
     MatchesController,
     MatchLiveController,
     MatchResultsController,
+ feature/HU10-Calculo-Automatico-Posiciones
+HEAD
+
  feature/HU11-Tabla-Posiciones
 
     MatchRefereePanelController,
     MatchCorrectionController,
  develop
+ develop
     StandingsController,
+
+    MatchRefereePanelController,
+ 535ea73 (:building_construction:[UPDATE]Integra controlador y servicio del panel del arbitro en MatchesModule)
   ],
 
   providers: [
     MatchesService,
     MatchLiveService,
     MatchResultsService,
+ feature/HU10-Calculo-Automatico-Posiciones
+HEAD
+
  feature/HU11-Tabla-Posiciones
 
     MatchRefereePanelService,
     MatchCorrectionService,
  develop
+develop
     StandingsService,
+
+    MatchRefereePanelService,
+ 535ea73 (:building_construction:[UPDATE]Integra controlador y servicio del panel del arbitro en MatchesModule)
     MatchRepository,
     MatchLiveRepository,
     MatchResultsRepository,
